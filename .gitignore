@@ -1,3 +1,20 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+dist-ssr
+build
+.turbo
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -6,11 +23,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +34,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.pyc
+venv/
+.venv/
+
+# AI models (large binary files — never commit)
+*.gguf
+*.safetensors
+models/

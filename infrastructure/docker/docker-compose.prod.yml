@@ -1,0 +1,76 @@
+# Teevexa Desk — Production Stack
+# Usage: docker compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: teevexa-desk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-teevexa_desk}
+      POSTGRES_USER: ${POSTGRES_USER:-teevexa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-teevexa}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: teevexa-desk-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama
+    container_name: teevexa-desk-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+
+  api:
+    build:
+      context: ../../services/api
+      dockerfile: Dockerfile
+    container_name: teevexa-desk-api
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8000:8000'
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-teevexa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teevexa_desk}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENVIRONMENT: production
+      HF_HOME: /models_cache/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /models_cache/sentence_transformers
+      TRANSFORMERS_CACHE: /models_cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - models_cache:/models_cache
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  models_cache:
+
+networks:
+  default:
+    name: teevexa-desk-network

@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+.turbo
+*.lock
+bun.lockb
+package-lock.json

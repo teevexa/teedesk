@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@supportiq/shared-types": ["../../packages/shared-types/src/index.ts"]
+    },
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "strictNullChecks": false
+  }
+}

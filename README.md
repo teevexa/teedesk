@@ -1,216 +1,257 @@
-# Customer Support Chatbot
+# SupportIQ
 
-## Overview
-The **Customer Support Chatbot** is an AI-powered chatbot designed to handle customer inquiries using **Advanced Natural Language Processing (NLP) and Machine Learning**. Built with **Flask/Django**, the chatbot utilizes **Hugging Face Transformers**, **TensorFlow/PyTorch**, and a **PostgreSQL/MySQL database** to provide accurate and context-aware responses. The chatbot can classify intents, extract named entities, perform sentiment analysis, and continuously learn from user feedback.
+**Production-grade AI customer support infrastructure.** Open-source, self-hostable, zero paid AI APIs.
 
 ---
 
-## Features
+## What Is SupportIQ?
 
-### 1. **Intent Detection**
-- Uses **BERT-based models** to classify user queries.
-- Identifies customer issues (e.g., order tracking, refunds, complaints).
+SupportIQ is a full-stack AI support platform with:
 
-### 2. **Named Entity Recognition (NER)**
-- Extracts key information like **order ID, date, product names**.
-- Improves chatbot accuracy by using structured data.
+- **Real-time chat** — WebSocket-powered with typing indicators, voice input/output, and message feedback
+- **AI NLP pipeline** — sentence-transformers intent classification, spaCy NER, local LLM responses via Ollama
+- **RAG knowledge base** — embed documents, retrieve context, generate grounded answers
+- **Analytics dashboard** — live sentiment distribution, intent trends, escalation tracking
+- **Human handoff** — escalate conversations to live agents when AI confidence is low
+- **Multi-tenancy** — white-label SaaS architecture with tenant-scoped data
+- **Multi-channel** — Web widget (embeddable), WhatsApp Business API, Telegram (planned)
+- **Fine-tuning loop** — feedback-driven intent retraining via Celery
 
-### 3. **Sentiment Analysis**
-- Detects **user frustration levels**.
-- Escalates urgent issues to human support if necessary.
+All AI runs locally. No OpenAI. No Anthropic. No paid APIs required.
 
-### 4. **Context-Aware Responses (RAG - Retrieval-Augmented Generation)**
-- Retrieves past conversations and knowledge base articles.
-- Uses **GPT-like models** for dynamic responses.
+---
 
-### 5. **Continuous Learning**
-- Stores user feedback and conversation history.
-- Improves responses by periodically fine-tuning models.
+## Repository Structure
 
-### 6. **Database Storage**
-- Uses **PostgreSQL/MySQL** to store conversation history, intents, and training data.
-
-### 7. **API-Based Deployment**
-- Provides REST API endpoints to integrate with web and mobile apps.
-- Deployable on **Render, Railway, Hugging Face Spaces**.
+```
+supportiq/
+├── apps/
+│   ├── web/              React + Vite + TypeScript + Tailwind + shadcn/ui
+│   └── widget/           Embeddable chat widget (IIFE bundle, drop-in script tag)
+├── packages/
+│   └── shared-types/     TypeScript interfaces shared across all apps
+├── services/
+│   ├── api/              FastAPI backend (Python) — REST + WebSocket
+│   └── inference/        Ollama local LLM config and Modelfile
+├── infrastructure/
+│   └── docker/           docker-compose for local dev (Postgres, Redis, Ollama, Qdrant)
+├── scripts/              Developer utility scripts
+├── .github/workflows/    CI/CD pipeline
+├── turbo.json            Turborepo build orchestration
+├── tsconfig.base.json    Shared TypeScript config
+└── .prettierrc           Shared code formatting
+```
 
 ---
 
 ## Tech Stack
 
-| Component  | Technology |
-|------------|-----------|
-| **Backend** | Flask / Django |
-| **NLP Models** | Hugging Face Transformers (BERT, DistilBERT) |
-| **Machine Learning** | TensorFlow / PyTorch |
-| **Database** | PostgreSQL / MySQL |
-| **Deployment** | Render / Railway / Hugging Face Spaces |
-| **Frontend (Optional)** | React / Vue.js (for chat UI) |
+| Layer | Technology | Purpose |
+|---|---|---|
+| Monorepo | Turborepo + npm workspaces | Build orchestration |
+| Web Frontend | React 18 + Vite + TypeScript | Chat UI, Admin Dashboard |
+| State | Zustand | Global client state |
+| Data Fetching | TanStack Query + Axios | API integration |
+| UI | Tailwind CSS + shadcn/ui + Framer Motion | Design system |
+| Backend | FastAPI + Uvicorn (Python) | REST + WebSocket API |
+| Database | PostgreSQL 16 + pgvector | Conversations + vector search |
+| Cache | Redis 7 | Sessions, rate limiting, Celery broker |
+| LLM | Ollama (Mistral 7B / Llama 3.1) | Local response generation |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2) | RAG + intent classification |
+| NER | spaCy | Named entity extraction |
+| Vector DB | pgvector (or Qdrant) | Knowledge base retrieval |
+| Background Jobs | Celery | Intent retraining from feedback |
+| Widget | Vanilla JS (IIFE, Vite build) | Embeddable customer chat widget |
+| WhatsApp | Meta Cloud API + webhooks | WhatsApp Business channel |
 
 ---
 
-## Database Schema
+## Quick Start
 
-### 1. **Intents Table (`intents`)**
-Stores predefined chatbot intents.
-```sql
-id | name          | created_at  | updated_at
---------------------------------------------
-1  | Order Status | 2025-02-08  | 2025-02-08
-2  | Refund Issue | 2025-02-08  | 2025-02-08
+### Prerequisites
+
+- Node.js 18+
+- Python 3.11+
+- Docker + Docker Compose
+
+### 1. Clone and Setup
+
+```bash
+git clone https://github.com/benjaminbaya/supportiq.git
+cd supportiq
+bash scripts/setup.sh
 ```
 
-### 2. **Training Data Table (`training_data`)**
-Stores training phrases for machine learning models.
-```sql
-id | intent_id | user_input          | bot_response      | created_at
---------------------------------------------------------------
-1  | 1         | "Where is my order?" | "Checking status" | 2025-02-08
-2  | 2         | "I want a refund"    | "Refund policy"   | 2025-02-08
+### 2. Start Infrastructure (Docker)
+
+```bash
+bash scripts/dev.sh infra
+# Starts: PostgreSQL, Redis, Ollama, Qdrant
 ```
 
-### 3. **Conversations Table (`conversations`)**
-Stores chatbot sessions.
-```sql
-id | user_id | status  | created_at
-----------------------------------
-1  | 23      | Open    | 2025-02-08
+### 3. Pull an LLM Model
+
+```bash
+bash scripts/dev.sh pull
+# Pulls: mistral:7b-instruct + nomic-embed-text
 ```
 
-### 4. **Messages Table (`messages`)**
-Stores all chat messages.
-```sql
-id | conversation_id | sender_id | message_text     | is_bot | timestamp
-------------------------------------------------------------------------
-1  | 1              | 23        | "Where is my order?" | 0  | 2025-02-08
-2  | 1              | NULL      | "Checking status"   | 1  | 2025-02-08
+### 4. Start the Web App
+
+```bash
+bash scripts/dev.sh web
+# Open: http://localhost:5173
 ```
 
-### 5. **Feedback Table (`feedback`)**
-Stores user feedback to improve the chatbot.
-```sql
-id | user_id | conversation_id | rating | comment        | created_at
-----------------------------------------------------------------------
-1  | 23      | 1              | 3      | "Not helpful"  | 2025-02-08
+### 5. Start the API (optional, enables full AI features)
+
+```bash
+bash scripts/dev.sh api
+# API runs at: http://localhost:8000
+# Docs at:     http://localhost:8000/docs
 ```
+
+### 6. Start the Celery worker (optional, enables background retraining)
+
+The fine-tuning pipeline runs as a Celery background job. Start the worker and
+beat scheduler in two separate terminals from `services/api/`:
+
+```bash
+# Terminal A — task worker
+celery -A app.tasks.celery_app worker --loglevel=info
+
+# Terminal B — beat scheduler (nightly auto-retrain)
+celery -A app.tasks.celery_app beat --loglevel=info
+```
+
+Requires Redis to be running (`bash scripts/dev.sh infra`). Without the worker,
+manual retraining via the admin UI returns a task ID but nothing executes.
 
 ---
 
-## Installation
+## Development Commands
 
-### 1. **Clone the Repository**
-```bash
-git clone https://github.com/your-repo/customer-support-chatbot.git
-cd customer-support-chatbot
-```
+| Command | Description |
+|---|---|
+| `npm run dev` | Start all apps (Turborepo) |
+| `npm run build` | Build all packages |
+| `npm run lint` | Lint all packages |
+| `npm run type-check` | TypeScript check all packages |
+| `npm run format` | Format all files with Prettier |
+| `bash scripts/dev.sh infra` | Start Docker infrastructure |
+| `bash scripts/dev.sh web` | Start web frontend only |
+| `bash scripts/dev.sh api` | Start FastAPI backend only |
+| `bash scripts/dev.sh pull` | Pull Ollama models |
+| `bash scripts/dev.sh reset` | Reset Docker volumes |
+| `celery -A app.tasks.celery_app worker` | Start Celery task worker |
+| `celery -A app.tasks.celery_app beat` | Start Celery beat scheduler |
 
-### 2. **Create Virtual Environment**
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate  # Windows
-```
+---
 
-### 3. **Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
+## Environment Variables
 
-### 4. **Set Up Environment Variables**
-Create a `.env` file and add:
+### Web App (`apps/web/.env.local`)
+
 ```env
-DATABASE_URL=postgresql://user:password@localhost/chatbot_db
-SECRET_KEY=your_secret_key
-HUGGINGFACE_API_KEY=your_api_key
+VITE_API_URL=http://localhost:8000
+VITE_WS_URL=ws://localhost:8000
+VITE_APP_NAME=SupportIQ
 ```
 
-### 5. **Run Migrations**
-```bash
-flask db upgrade  # Flask
-python manage.py migrate  # Django
-```
+### API Service (`services/api/.env`)
 
-### 6. **Start the Server**
-```bash
-flask run  # Flask
-python manage.py runserver  # Django
+See [services/api/.env.example](services/api/.env.example) for the full list.
+
+Key variables:
+```env
+DATABASE_URL=postgresql+asyncpg://supportiq:supportiq_dev@localhost:5432/supportiq
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=your-very-long-secret-key
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=mistral:7b-instruct
 ```
 
 ---
 
-## API Endpoints
+## Implementation Status
 
-### **1. Chatbot API**
-- **POST** `/api/chat`
-```json
-{
-  "user_id": 23,
-  "message": "Where is my order?"
-}
-```
-- **Response:**
-```json
-{
-  "response": "Checking status...",
-  "intent": "Order Status"
-}
-```
+### Done
+- [x] Monorepo architecture (Turborepo + npm workspaces)
+- [x] React web frontend — chat UI, admin dashboard, agent queue, analytics, knowledge base
+- [x] Voice input/output (Web Speech API)
+- [x] Real-time WebSocket — typing indicators, presence, optimistic messages, auto-reconnect
+- [x] FastAPI backend — auth (JWT + refresh), all REST endpoints, WebSocket chat
+- [x] PostgreSQL schema + Alembic migrations
+- [x] Full AI pipeline — embedding → sentiment → NER → intent classification → RAG → LLM
+- [x] Ollama LLM integration (Mistral 7B, local, zero API cost)
+- [x] RAG knowledge base (pgvector cosine similarity retrieval)
+- [x] Multi-tenancy — all data scoped to `tenant_id`, role-based access (customer / agent / admin / super_admin)
+- [x] Human handoff — auto-escalation on negative sentiment, agent claim/resolve flow
+- [x] Analytics API — conversation stats, sentiment distribution, intent trends
+- [x] Email verification + password reset flows (frontend + backend)
+- [x] Docker Compose dev infrastructure (Postgres, Redis, Ollama, Qdrant)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] Shared TypeScript types package
 
-### **2. Training API**
-- **POST** `/api/train`
-```json
-{
-  "intent": "Refund Issue",
-  "training_phrases": ["I want a refund", "How do I get my money back?"]
-}
-```
+### In Progress
+- [ ] Embeddable chat widget (IIFE bundle for third-party sites)
+- [ ] WhatsApp Business API integration (Meta Cloud API webhooks)
+- [ ] Fine-tuning pipeline — feedback-driven intent retraining via Celery
 
-### **3. Feedback API**
-- **POST** `/api/feedback`
-```json
-{
-  "user_id": 23,
-  "conversation_id": 1,
-  "rating": 5,
-  "comment": "Great chatbot!"
-}
-```
+### Planned
+- [ ] Telegram bot integration
+- [ ] Stripe / Flutterwave billing for SaaS deployment
+
+---
+
+## Open-Source AI Stack
+
+All AI components are free and run locally:
+
+| Component | Model / Library | Size |
+|---|---|---|
+| LLM | Mistral 7B Instruct (via Ollama) | 4.1 GB |
+| Embeddings | all-MiniLM-L6-v2 (sentence-transformers) | 22 MB |
+| NER | spaCy en_core_web_sm | 12 MB |
+| Sentiment | cardiffnlp/twitter-roberta (server-side) | 499 MB |
+| Vector DB | pgvector (PostgreSQL extension) | — |
 
 ---
 
 ## Deployment
 
-### **1. Deploy to Render**
-- Create a **Flask/Django** service on [Render](https://render.com/).
-- Add environment variables.
-- Deploy using `gunicorn`.
+### Free/Low-Cost Cloud
 
-### **2. Deploy NLP Model on Hugging Face Spaces**
-- Use **Gradio or FastAPI** to serve the model.
-- Upload the fine-tuned model to **Hugging Face Hub**.
+| Service | Provider | Cost |
+|---|---|---|
+| Web Frontend | Vercel | Free |
+| PostgreSQL | Supabase / Neon | Free tier |
+| Redis | Upstash | Free tier (10k req/day) |
+| Backend API | Railway / Render | ~$5/month |
+| LLM Inference | Hugging Face Spaces (GPU) | Free tier |
 
-### **3. CI/CD (GitHub Actions)**
-- Automate deployment when pushing new code.
+### Self-Hosted (recommended for privacy)
 
----
-
-## Future Enhancements
-- Implement **voice-based support**.
-- Integrate with **WhatsApp & Telegram**.
-- Improve **context retention** for better conversations.
-
----
-
-## Contributors
-- **Benjamin Baya** - Developer & Maintainer
+```bash
+cd infrastructure/docker
+docker compose up -d
+```
 
 ---
 
 ## License
-MIT License
+
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-## Support
-For issues or feature requests, open a GitHub issue or email **b3njaminbaya@gmail.com**.
+## Contributing
 
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/my-feature`
+3. Commit your changes: `git commit -m "feat: add my feature"`
+4. Push and open a pull request
+
+---
+
+Built with care for the developer community. No vendor lock-in. No paid AI APIs.
