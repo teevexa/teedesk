@@ -14,7 +14,7 @@ from app.ai.model_manager import model_manager
 
 log = structlog.get_logger(__name__)
 
-_CACHE_PREFIX = "siq:sent:"
+_CACHE_PREFIX = "td:sent:"
 
 # Label mapping from the cardiffnlp model's output labels to our enum
 _LABEL_MAP = {

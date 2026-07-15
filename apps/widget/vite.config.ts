@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/main.tsx',
-      name: 'SupportIQWidget',
+      name: 'TeeDeskWidget',
       fileName: 'widget',
       formats: ['iife'],
     },

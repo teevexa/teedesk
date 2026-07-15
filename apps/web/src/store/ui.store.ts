@@ -63,7 +63,7 @@ export const useUIStore = create<UIState>()(
           set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
       }),
       {
-        name: 'supportiq-ui',
+        name: 'teedesk-ui',
         partialize: (state) => ({ theme: state.theme, activeTab: state.activeTab }),
       }
     ),

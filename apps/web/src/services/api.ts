@@ -14,7 +14,7 @@ export const apiClient: AxiosInstance = axios.create({
 
 // Attach JWT access token from store to every request
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('supportiq_token');
+  const token = localStorage.getItem('teedesk_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -63,7 +63,7 @@ apiClient.interceptors.response.use(
           '/auth/refresh'
         );
         const newToken = res.data.access_token;
-        localStorage.setItem('supportiq_token', newToken);
+        localStorage.setItem('teedesk_token', newToken);
 
         // Update auth store without a circular import — dynamic import resolves at runtime
         import('@/store/auth.store').then(({ useAuthStore }) => {
@@ -79,7 +79,7 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch (refreshErr) {
         _processQueue(refreshErr, null);
-        localStorage.removeItem('supportiq_token');
+        localStorage.removeItem('teedesk_token');
         import('@/store/auth.store').then(({ useAuthStore }) => {
           useAuthStore.getState().clearAuth();
         });
@@ -108,7 +108,7 @@ apiClient.interceptors.response.use(
       apiError.code = (nested?.code as string) || (data.code as string) || undefined;
     } else if (error.request) {
       apiError.message =
-        'Cannot reach the SupportIQ API. Make sure the backend is running on ' + API_URL;
+        'Cannot reach the TeeDesk API. Make sure the backend is running on ' + API_URL;
       apiError.status = 0;
     }
 

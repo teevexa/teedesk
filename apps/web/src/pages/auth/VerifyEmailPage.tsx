@@ -49,7 +49,7 @@ const VerifyEmailPage: React.FC = () => {
           <div className="h-9 w-9 rounded-xl bg-gradient-primary flex items-center justify-center">
             <MessageCircle className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl gradient-text">SupportIQ</span>
+          <span className="font-bold text-xl gradient-text">TeeDesk</span>
         </div>
 
         <Card className="glass-card border-0">
@@ -74,7 +74,7 @@ const VerifyEmailPage: React.FC = () => {
               <div className="flex flex-col items-center gap-4 py-4">
                 <CheckCircle2 className="h-12 w-12 text-green-500" />
                 <p className="text-sm text-muted-foreground text-center">
-                  Your account is now active. You can sign in and start using SupportIQ.
+                  Your account is now active. You can sign in and start using TeeDesk.
                 </p>
                 <Link to="/login">
                   <Button className="mt-2">Go to sign in</Button>

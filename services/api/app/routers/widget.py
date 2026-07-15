@@ -53,7 +53,7 @@ async def create_guest_session(
 
     # Create an anonymous guest user record (or reuse an existing bot-user pattern)
     guest_id = uuid.uuid4()
-    guest_email = f"guest_{guest_id.hex[:8]}@widget.supportiq"
+    guest_email = f"guest_{guest_id.hex[:8]}@widget.teedesk"
     guest = User(
         id=guest_id,
         tenant_id=tenant.id,

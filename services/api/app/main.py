@@ -22,7 +22,7 @@ log = structlog.get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
-    log.info("SupportIQ API starting", environment=settings.environment)
+    log.info("TeeDesk API starting", environment=settings.environment)
 
     # Start Redis pub/sub listener for cross-process WS broadcast
     from app.core.connection_manager import manager
@@ -48,11 +48,11 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
     await manager.stop()
     await close_redis()
-    log.info("SupportIQ API shutting down")
+    log.info("TeeDesk API shutting down")
 
 
 app = FastAPI(
-    title="SupportIQ API",
+    title="TeeDesk API",
     description=(
         "Production-grade AI customer support infrastructure. "
         "Open-source, self-hostable, zero paid AI APIs."

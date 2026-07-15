@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.exceptions import SupportIQError
+from app.core.exceptions import TeeDeskError
 from app.core.security import decode_access_token
 from app.models.user import ADMIN_ROLES, AGENT_ROLES, User
 
@@ -21,7 +21,7 @@ log = structlog.get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-class AuthError(SupportIQError):
+class AuthError(TeeDeskError):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "unauthorized"
 
@@ -30,7 +30,7 @@ class AuthError(SupportIQError):
         self.headers = {"WWW-Authenticate": "Bearer"}
 
 
-class ForbiddenError(SupportIQError):
+class ForbiddenError(TeeDeskError):
     status_code = status.HTTP_403_FORBIDDEN
     code = "forbidden"
 

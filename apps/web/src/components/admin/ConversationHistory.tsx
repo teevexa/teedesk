@@ -69,7 +69,7 @@ export const ConversationHistory: React.FC = () => {
       <EmptyState
         icon={MessageSquare}
         title="Conversation History Unavailable"
-        description="Connect the SupportIQ backend to view and manage conversation history."
+        description="Connect the TeeDesk backend to view and manage conversation history."
       />
     );
   }

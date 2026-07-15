@@ -18,8 +18,8 @@ from fastapi import WebSocket
 log = logging.getLogger(__name__)
 
 # Channel prefixes for Redis pub/sub
-_CHAN_CONV = "siq:conv:"      # siq:conv:{conversation_id}
-_CHAN_TENANT = "siq:tenant:"  # siq:tenant:{tenant_id}
+_CHAN_CONV = "td:conv:"      # td:conv:{conversation_id}
+_CHAN_TENANT = "td:tenant:"  # td:tenant:{tenant_id}
 
 # Unique identifier for this process — used to avoid re-delivering our own pub/sub messages
 _INSTANCE_ID = os.urandom(8).hex()
@@ -65,7 +65,7 @@ class ConnectionManager:
             settings.redis_url, encoding="utf-8", decode_responses=True
         )
         async with pubsub_client.pubsub() as ps:
-            await ps.psubscribe("siq:*")
+            await ps.psubscribe("td:*")
             try:
                 async for message in ps.listen():
                     if message["type"] not in ("pmessage", "message"):

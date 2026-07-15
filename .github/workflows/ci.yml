@@ -48,10 +48,10 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build --filter=@supportiq/web
+        run: npm run build --filter=@teedesk/web
         env:
           VITE_API_URL: http://localhost:8000
-          VITE_APP_NAME: SupportIQ
+          VITE_APP_NAME: TeeDesk
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -68,8 +68,8 @@ jobs:
   #     postgres:
   #       image: pgvector/pgvector:pg16
   #       env:
-  #         POSTGRES_DB: supportiq_test
-  #         POSTGRES_USER: supportiq
+  #         POSTGRES_DB: teedesk_test
+  #         POSTGRES_USER: teedesk
   #         POSTGRES_PASSWORD: test
   #       ports:
   #         - 5432:5432

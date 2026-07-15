@@ -1,6 +1,6 @@
-# SupportIQ API Service
+# TeeDesk API Service
 
-FastAPI backend for the SupportIQ platform. Provides REST + WebSocket APIs for the web and mobile frontends.
+FastAPI backend for the TeeDesk platform. Provides REST + WebSocket APIs for the web and mobile frontends.
 
 ## Stack
 

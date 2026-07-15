@@ -88,7 +88,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
               <div className="h-7 w-7 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <MessageCircle className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-sm gradient-text">SupportIQ</span>
+              <span className="font-bold text-sm gradient-text">TeeDesk</span>
             </div>
 
             <TabsList className="bg-transparent gap-1 h-16 p-0 flex-1">

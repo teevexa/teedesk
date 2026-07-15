@@ -1,4 +1,4 @@
-# SupportIQ API — Python dependencies
+# TeeDesk API — Python dependencies
 # Install with: pip install -r requirements.txt
 
 # Web framework

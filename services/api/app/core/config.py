@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:5173"
 
     # Database
-    database_url: str = "postgresql+asyncpg://supportiq:supportiq_dev@localhost:5432/supportiq"
+    database_url: str = "postgresql+asyncpg://teedesk:teedesk_dev@localhost:5432/teedesk"
     database_pool_size: int = 20
     database_max_overflow: int = 0
 
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # Qdrant (not used — using pgvector instead)
     qdrant_url: str = "http://localhost:6333"
-    qdrant_collection: str = "supportiq_knowledge"
+    qdrant_collection: str = "teedesk_knowledge"
 
     # AI / NLP model config
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"

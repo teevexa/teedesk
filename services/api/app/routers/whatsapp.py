@@ -181,7 +181,7 @@ async def _get_or_create_conversation(
     from app.models.user import User
 
     # Find or create a guest user for this phone number
-    guest_email = f"wa_{from_number}@whatsapp.supportiq"
+    guest_email = f"wa_{from_number}@whatsapp.teedesk"
     result = await db.execute(select(User).where(User.email == guest_email))
     guest = result.scalar_one_or_none()
     if guest is None:

@@ -1,23 +1,23 @@
-# SupportIQ — Local Development Stack
+# TeeDesk — Local Development Stack
 # Start with: docker compose up -d
 
 services:
   # PostgreSQL with pgvector extension for vector similarity search
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: supportiq-postgres
+    container_name: teedesk-postgres
     restart: unless-stopped
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_DB: supportiq
-      POSTGRES_USER: supportiq
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supportiq_dev}
+      POSTGRES_DB: teedesk
+      POSTGRES_USER: teedesk
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-teedesk_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U supportiq']
+      test: ['CMD-SHELL', 'pg_isready -U teedesk']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
   # Redis — session cache, Celery broker, rate limiting
   redis:
     image: redis:7-alpine
-    container_name: supportiq-redis
+    container_name: teedesk-redis
     restart: unless-stopped
     ports:
       - '6379:6379'
@@ -39,10 +39,10 @@ services:
       retries: 5
 
   # Ollama — local LLM inference (OpenAI-compatible API)
-  # Pull models: docker exec supportiq-ollama ollama pull mistral:7b-instruct
+  # Pull models: docker exec teedesk-ollama ollama pull mistral:7b-instruct
   ollama:
     image: ollama/ollama
-    container_name: supportiq-ollama
+    container_name: teedesk-ollama
     restart: unless-stopped
     ports:
       - '11434:11434'
@@ -60,7 +60,7 @@ services:
   # Qdrant — vector database for RAG embeddings
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: supportiq-qdrant
+    container_name: teedesk-qdrant
     restart: unless-stopped
     ports:
       - '6333:6333'
@@ -73,14 +73,14 @@ services:
     build:
       context: ../../services/api
       dockerfile: Dockerfile
-    container_name: supportiq-api
+    container_name: teedesk-api
     restart: unless-stopped
     ports:
       - '8000:8000'
     env_file:
       - ../../services/api/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://supportiq:${POSTGRES_URL_PASSWORD:-supportiq_dev}@postgres:5432/supportiq
+      DATABASE_URL: postgresql+asyncpg://teedesk:${POSTGRES_URL_PASSWORD:-teedesk_dev}@postgres:5432/teedesk
       REDIS_URL: redis://redis:6379/0
       OLLAMA_BASE_URL: http://ollama:11434
       ENVIRONMENT: development
@@ -114,4 +114,4 @@ volumes:
 
 networks:
   default:
-    name: supportiq-network
+    name: teedesk-network

@@ -1,11 +1,11 @@
 /**
- * SupportIQ embeddable widget entry point.
+ * TeeDesk embeddable widget entry point.
  *
  * Usage on any website:
  *   <script
- *     src="https://your-supportiq-domain.com/widget.js"
+ *     src="https://your-teedesk-domain.com/widget.js"
  *     data-tenant-id="YOUR_TENANT_ID"
- *     data-api-url="https://your-supportiq-domain.com"
+ *     data-api-url="https://your-teedesk-domain.com"
  *     data-primary-color="#6366f1"    (optional)
  *     data-position="bottom-right"    (optional: bottom-right | bottom-left)
  *   ></script>
@@ -30,13 +30,13 @@ function boot() {
     (script?.getAttribute('data-position') as 'bottom-right' | 'bottom-left') ?? 'bottom-right';
 
   if (!tenantId) {
-    console.warn('[SupportIQ] data-tenant-id is required. Widget not loaded.');
+    console.warn('[TeeDesk] data-tenant-id is required. Widget not loaded.');
     return;
   }
 
   // Host element
   const host = document.createElement('div');
-  host.id = 'supportiq-widget-host';
+  host.id = 'teedesk-widget-host';
   host.style.cssText = 'position:fixed;z-index:2147483647;';
   document.body.appendChild(host);
 

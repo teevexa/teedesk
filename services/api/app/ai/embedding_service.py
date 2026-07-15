@@ -10,7 +10,7 @@ from app.ai.model_manager import model_manager
 
 log = structlog.get_logger(__name__)
 
-_CACHE_PREFIX = "siq:emb:"
+_CACHE_PREFIX = "td:emb:"
 
 
 def _cache_key(text: str) -> str:

@@ -30,12 +30,12 @@ export const useAuthStore = create<AuthState>()(
         isLoading: false,
 
         setAuth: (user, token) => {
-          localStorage.setItem('supportiq_token', token);
+          localStorage.setItem('teedesk_token', token);
           set({ user, token, isAuthenticated: true });
         },
 
         clearAuth: () => {
-          localStorage.removeItem('supportiq_token');
+          localStorage.removeItem('teedesk_token');
           set({ user: null, token: null, isAuthenticated: false });
         },
 
@@ -90,7 +90,7 @@ export const useAuthStore = create<AuthState>()(
         },
       }),
       {
-        name: 'supportiq-auth',
+        name: 'teedesk-auth',
         partialize: (state) => ({ user: state.user, token: state.token }),
         onRehydrateStorage: () => (state) => {
           if (state?.token) {

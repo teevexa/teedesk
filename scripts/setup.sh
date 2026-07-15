@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SupportIQ — Development Environment Setup
+# TeeDesk — Development Environment Setup
 # Run once after cloning: bash scripts/setup.sh
 
 set -euo pipefail
@@ -13,7 +13,7 @@ info() { echo -e "${GREEN}[setup]${NC} $1"; }
 warn() { echo -e "${YELLOW}[warn]${NC} $1"; }
 error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
-info "Setting up SupportIQ development environment..."
+info "Setting up TeeDesk development environment..."
 
 # --- Check prerequisites ---
 command -v node >/dev/null 2>&1 || error "Node.js >= 18 required. Visit https://nodejs.org"

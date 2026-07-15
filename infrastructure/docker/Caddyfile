@@ -1,4 +1,4 @@
-# Teevexa Desk — Caddy reverse proxy with automatic HTTPS
+# TeeDesk — Caddy reverse proxy with automatic HTTPS
 # Deploy to /etc/caddy/Caddyfile on your Oracle Cloud VM
 # Replace YOUR_DOMAIN with e.g. yourname.duckdns.org
 
@@ -10,7 +10,7 @@ YOUR_DOMAIN {
 
     # Frontend (React SPA) — serve built files + fallback to index.html
     handle {
-        root * /var/www/teevexa-desk
+        root * /var/www/teedesk
         try_files {path} /index.html
         file_server
     }

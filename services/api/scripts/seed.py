@@ -102,15 +102,15 @@ SEED_ARTICLES = [
         "tags": ["billing", "invoice", "payment"],
     },
     {
-        "title": "Getting started with SupportIQ",
+        "title": "Getting started with TeeDesk",
         "content": (
-            "Welcome to SupportIQ! Here's how to get started:\n\n"
+            "Welcome to TeeDesk! Here's how to get started:\n\n"
             "1. **Create your tenant account** — Sign up and verify your email.\n"
             "2. **Configure your knowledge base** — Upload FAQs and help docs.\n"
             "3. **Set up intents** — Define the types of questions your AI will handle.\n"
             "4. **Install the chat widget** — Add our JavaScript snippet to your website.\n"
             "5. **Test your bot** — Use the playground to simulate conversations.\n\n"
-            "For detailed setup instructions, see our documentation at docs.supportiq.io."
+            "For detailed setup instructions, see our documentation at docs.teedesk.io."
         ),
         "category": "getting-started",
         "tags": ["setup", "onboarding", "getting-started"],

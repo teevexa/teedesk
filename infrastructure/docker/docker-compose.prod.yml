@@ -1,26 +1,26 @@
-# Teevexa Desk — Production Stack
+# TeeDesk — Production Stack
 # Usage: docker compose -f docker-compose.prod.yml up -d
 
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: teevexa-desk-postgres
+    container_name: teedesk-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-teevexa_desk}
-      POSTGRES_USER: ${POSTGRES_USER:-teevexa}
+      POSTGRES_DB: ${POSTGRES_DB:-teedesk}
+      POSTGRES_USER: ${POSTGRES_USER:-teedesk}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-teevexa}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-teedesk}']
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: teevexa-desk-redis
+    container_name: teedesk-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
@@ -33,7 +33,7 @@ services:
 
   ollama:
     image: ollama/ollama
-    container_name: teevexa-desk-ollama
+    container_name: teedesk-ollama
     restart: unless-stopped
     volumes:
       - ollama_data:/root/.ollama
@@ -42,14 +42,14 @@ services:
     build:
       context: ../../services/api
       dockerfile: Dockerfile
-    container_name: teevexa-desk-api
+    container_name: teedesk-api
     restart: unless-stopped
     ports:
       - '127.0.0.1:8000:8000'
     env_file:
       - .env.prod
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-teevexa}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teevexa_desk}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-teedesk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teedesk}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       OLLAMA_BASE_URL: http://ollama:11434
       ENVIRONMENT: production
@@ -73,4 +73,4 @@ volumes:
 
 networks:
   default:
-    name: teevexa-desk-network
+    name: teedesk-network

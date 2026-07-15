@@ -124,7 +124,7 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
             break;
 
           case 'error':
-            console.warn('[SupportIQ widget]', frame.message);
+            console.warn('[TeeDesk widget]', frame.message);
             break;
         }
       };
@@ -190,7 +190,7 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
 
       {/* Launcher button */}
       <button
-        className="siq-launcher"
+        className="td-launcher"
         style={positionStyle}
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? 'Close support chat' : 'Open support chat'}
@@ -208,40 +208,40 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
 
       {/* Chat panel */}
       {open && (
-        <div className="siq-panel" style={positionStyle}>
+        <div className="td-panel" style={positionStyle}>
           {/* Header */}
-          <div className="siq-header">
-            <div className="siq-header-avatar">
+          <div className="td-header">
+            <div className="td-header-avatar">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
             <div>
-              <p className="siq-header-title">Support</p>
-              <p className="siq-header-sub">
+              <p className="td-header-title">Support</p>
+              <p className="td-header-sub">
                 {wsStatus === 'connected' ? 'Online' : wsStatus === 'connecting' ? 'Connecting…' : 'Offline'}
               </p>
             </div>
           </div>
 
           {/* Messages */}
-          <div className="siq-messages">
+          <div className="td-messages">
             {messages.length === 0 && (
-              <div className="siq-welcome">
+              <div className="td-welcome">
                 <p>👋 Hi! How can we help you today?</p>
               </div>
             )}
             {messages.map((msg) => (
-              <div key={msg.id} className={`siq-msg ${msg.isBot ? 'siq-msg--bot' : 'siq-msg--user'}`}>
-                <p className="siq-msg-content">{msg.content}</p>
+              <div key={msg.id} className={`td-msg ${msg.isBot ? 'td-msg--bot' : 'td-msg--user'}`}>
+                <p className="td-msg-content">{msg.content}</p>
                 {!msg.isBot && msg.status === 'sending' && (
-                  <span className="siq-msg-status">Sending…</span>
+                  <span className="td-msg-status">Sending…</span>
                 )}
               </div>
             ))}
             {isTyping && (
-              <div className="siq-msg siq-msg--bot">
-                <span className="siq-typing">
+              <div className="td-msg td-msg--bot">
+                <span className="td-typing">
                   <span /><span /><span />
                 </span>
               </div>
@@ -250,9 +250,9 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
           </div>
 
           {/* Input */}
-          <div className="siq-input-row">
+          <div className="td-input-row">
             <textarea
-              className="siq-input"
+              className="td-input"
               placeholder="Type a message…"
               rows={1}
               value={input}
@@ -261,7 +261,7 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
               disabled={wsStatus !== 'connected'}
             />
             <button
-              className="siq-send"
+              className="td-send"
               onClick={sendMessage}
               disabled={!input.trim() || wsStatus !== 'connected'}
               aria-label="Send"
@@ -272,7 +272,7 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
             </button>
           </div>
 
-          <p className="siq-branding">Powered by SupportIQ</p>
+          <p className="td-branding">Powered by TeeDesk</p>
         </div>
       )}
     </>

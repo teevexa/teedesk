@@ -42,7 +42,7 @@ export const KnowledgeBase: React.FC = () => {
       <EmptyState
         icon={BookOpen}
         title="Knowledge Base Unavailable"
-        description="Connect the SupportIQ backend to manage and search your knowledge base articles."
+        description="Connect the TeeDesk backend to manage and search your knowledge base articles."
       />
     );
   }

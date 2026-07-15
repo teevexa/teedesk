@@ -49,7 +49,7 @@ export const AnalyticsPanel: React.FC = () => {
         <EmptyState
           icon={BarChart3}
           title="Analytics Unavailable"
-          description="Connect the SupportIQ backend to see real-time conversation analytics, sentiment trends, and intent distribution."
+          description="Connect the TeeDesk backend to see real-time conversation analytics, sentiment trends, and intent distribution."
         />
       </div>
     );

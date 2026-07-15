@@ -57,7 +57,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
 @router.get("/")
 async def root() -> dict:
     return {
-        "service": "SupportIQ API",
+        "service": "TeeDesk API",
         "version": "0.2.0",
         "docs": "/docs",
         "health": "/health",

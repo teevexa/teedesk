@@ -323,9 +323,9 @@ async def trigger_retrain(
 
     if all_tenants:
         if current_user.role != "super_admin":
-            from app.core.exceptions import SupportIQError
+            from app.core.exceptions import TeeDeskError
             from fastapi import status as http_status
-            raise SupportIQError("Only super_admin can retrain all tenants")
+            raise TeeDeskError("Only super_admin can retrain all tenants")
         task = retrain_all_tenants.delay()
     else:
         task = retrain_tenant.delay(str(current_user.tenant_id))

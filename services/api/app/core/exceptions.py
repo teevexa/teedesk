@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 
-class SupportIQError(Exception):
+class TeeDeskError(Exception):
     status_code: int = 500
     code: str = "internal_error"
 
@@ -18,23 +18,23 @@ class SupportIQError(Exception):
         super().__init__(message)
 
 
-class NotFoundException(SupportIQError):
+class NotFoundException(TeeDeskError):
     def __init__(self, resource: str, id: object = None) -> None:
         detail = f"{resource} not found" if id is None else f"{resource} '{id}' not found"
         super().__init__(detail, status.HTTP_404_NOT_FOUND, "not_found")
 
 
-class ConflictException(SupportIQError):
+class ConflictException(TeeDeskError):
     def __init__(self, message: str) -> None:
         super().__init__(message, status.HTTP_409_CONFLICT, "conflict")
 
 
-class BadRequestException(SupportIQError):
+class BadRequestException(TeeDeskError):
     def __init__(self, message: str) -> None:
         super().__init__(message, status.HTTP_400_BAD_REQUEST, "bad_request")
 
 
-class UnprocessableException(SupportIQError):
+class UnprocessableException(TeeDeskError):
     def __init__(self, message: str) -> None:
         super().__init__(message, status.HTTP_422_UNPROCESSABLE_ENTITY, "unprocessable")
 
@@ -44,8 +44,8 @@ def _error_body(code: str, message: str) -> dict:
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(SupportIQError)
-    async def supportiq_error_handler(_: Request, exc: SupportIQError) -> JSONResponse:
+    @app.exception_handler(TeeDeskError)
+    async def teedesk_error_handler(_: Request, exc: TeeDeskError) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_body(exc.code, exc.message),

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SupportIQ — Development utilities
+# TeeDesk — Development utilities
 # Usage: bash scripts/dev.sh [command]
 #
 # Commands:
@@ -34,15 +34,15 @@ case "$COMMAND" in
   api)
     echo "[dev] Starting API service..."
     # Stop the Docker API container if running — it would shadow the local server on port 8000
-    docker stop supportiq-api 2>/dev/null && docker rm supportiq-api 2>/dev/null || true
+    docker stop teedesk-api 2>/dev/null && docker rm teedesk-api 2>/dev/null || true
     cd services/api
     ../../.venv/bin/python -m uvicorn app.main:app --reload --port 8000
     ;;
 
   pull)
     echo "[dev] Pulling Ollama models..."
-    docker exec supportiq-ollama ollama pull mistral:7b-instruct
-    docker exec supportiq-ollama ollama pull nomic-embed-text
+    docker exec teedesk-ollama ollama pull mistral:7b-instruct
+    docker exec teedesk-ollama ollama pull nomic-embed-text
     echo "[dev] Models ready"
     ;;
 

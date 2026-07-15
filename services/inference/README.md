@@ -1,4 +1,4 @@
-# SupportIQ Inference Service
+# TeeDesk Inference Service
 
 Manages local LLM inference using Ollama. Provides an OpenAI-compatible API at `http://localhost:11434`.
 
@@ -47,7 +47,7 @@ curl http://localhost:11434/api/tags
 The FastAPI backend sends structured prompts. Example:
 
 ```
-You are SupportIQ, a helpful customer support AI assistant.
+You are TeeDesk, a helpful customer support AI assistant.
 Use the following knowledge base context to answer the customer's question accurately.
 If the context doesn't contain enough information, say so honestly and offer to escalate.
 
@@ -64,5 +64,5 @@ Respond in a helpful, professional, and empathetic tone.
 ## Modelfile (Custom System Prompt)
 
 ```bash
-ollama create supportiq -f Modelfile
+ollama create teedesk -f Modelfile
 ```

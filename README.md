@@ -1,12 +1,12 @@
-# SupportIQ
+# TeeDesk
 
 **Production-grade AI customer support infrastructure.** Open-source, self-hostable, zero paid AI APIs.
 
 ---
 
-## What Is SupportIQ?
+## What Is TeeDesk?
 
-SupportIQ is a full-stack AI support platform with:
+TeeDesk is a full-stack AI support platform with:
 
 - **Real-time chat** — WebSocket-powered with typing indicators, voice input/output, and message feedback
 - **AI NLP pipeline** — sentence-transformers intent classification, spaCy NER, local LLM responses via Ollama
@@ -24,7 +24,7 @@ All AI runs locally. No OpenAI. No Anthropic. No paid APIs required.
 ## Repository Structure
 
 ```
-supportiq/
+teedesk/
 ├── apps/
 │   ├── web/              React + Vite + TypeScript + Tailwind + shadcn/ui
 │   └── widget/           Embeddable chat widget (IIFE bundle, drop-in script tag)
@@ -77,8 +77,8 @@ supportiq/
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/benjaminbaya/supportiq.git
-cd supportiq
+git clone https://github.com/b3njaminbaya/teedesk.git
+cd teedesk
 bash scripts/setup.sh
 ```
 
@@ -155,7 +155,7 @@ manual retraining via the admin UI returns a task ID but nothing executes.
 ```env
 VITE_API_URL=http://localhost:8000
 VITE_WS_URL=ws://localhost:8000
-VITE_APP_NAME=SupportIQ
+VITE_APP_NAME=TeeDesk
 ```
 
 ### API Service (`services/api/.env`)
@@ -164,7 +164,7 @@ See [services/api/.env.example](services/api/.env.example) for the full list.
 
 Key variables:
 ```env
-DATABASE_URL=postgresql+asyncpg://supportiq:supportiq_dev@localhost:5432/supportiq
+DATABASE_URL=postgresql+asyncpg://teedesk:teedesk_dev@localhost:5432/teedesk
 REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=your-very-long-secret-key
 OLLAMA_BASE_URL=http://localhost:11434

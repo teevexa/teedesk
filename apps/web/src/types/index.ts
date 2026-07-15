@@ -1,5 +1,5 @@
 // Re-export shared types for use throughout the web app.
-// When @supportiq/shared-types package is fully wired up via Turborepo,
+// When @teedesk/shared-types package is fully wired up via Turborepo,
 // import directly from there. For now, we define the same types locally
 // to keep the app self-contained and runnable without the full monorepo install.
 
