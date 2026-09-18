@@ -1,0 +1,89 @@
+# Ollama — local LLM inference (no paid AI APIs; this is the whole point).
+#
+# ASSUMPTION on sizing: OLLAMA_MODEL is mistral:7b-instruct (see configmap.yaml),
+# run at its default Q4_K_M quantization (~4.1GB model weights on disk). Ollama's
+# own runtime overhead plus KV cache for a handful of concurrent conversations
+# pushes working-set RAM to roughly 6-8GB in practice, so requests/limits below
+# give it headroom. This has NO GPU configured (CPU inference) — expect multi-
+# second latency per response; add a `nvidia.com/gpu` resource + nodeSelector/
+# tolerations if the cluster has GPU nodes, which would change sizing a lot.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: teedesk
+  labels:
+    app: ollama
+spec:
+  replicas: 1 # not horizontally scalable without shared model storage + a router
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama
+          ports:
+            - containerPort: 11434
+              name: ollama
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              cpu: "2"
+              memory: "6Gi"
+            limits:
+              cpu: "4"
+              memory: "10Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: ollama-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data
+  namespace: teedesk
+spec:
+  accessModes: ["ReadWriteOnce"]
+  # TODO: set storageClassName to match your cluster.
+  resources:
+    requests:
+      storage: 20Gi # room for mistral:7b-instruct plus any other pulled models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: teedesk
+  labels:
+    app: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+      name: ollama

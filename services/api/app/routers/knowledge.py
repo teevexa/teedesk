@@ -1,15 +1,19 @@
 from __future__ import annotations
 import logging
 import uuid
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, require_agent, verify_tenant_access
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal, get_db
+from app.core.document_parser import extract_text
+from app.core.exceptions import BadRequestException
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.models.knowledge import KnowledgeArticle
 from app.models.user import User
@@ -49,6 +53,11 @@ AuthUser = Annotated[User, Depends(get_current_user)]
 AgentUser = Annotated[User, Depends(require_agent())]
 
 
+@router.get("/categories", response_model=list[str])
+async def list_categories(svc: Svc, current_user: AuthUser) -> list[str]:
+    return await svc.list_categories(current_user.tenant_id)
+
+
 @router.get("", response_model=PaginatedResponse[ArticleResponse])
 async def list_articles(
     svc: Svc,
@@ -86,6 +95,44 @@ async def create_article(
     body.tenant_id = current_user.tenant_id
     article = await svc.create(body)
     # Embed in background — non-blocking
+    import asyncio
+    asyncio.create_task(_embed_article(svc, article.id, body.title, body.content))
+    return ArticleResponse.model_validate(article)
+
+
+@router.post("/upload", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
+async def upload_article(
+    svc: Svc,
+    current_user: AgentUser,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    category: str | None = Form(None),
+    tags: str | None = Form(None),  # comma-separated
+) -> ArticleResponse:
+    """Create a knowledge article from an uploaded PDF or DOCX file."""
+    content = await file.read()
+    if not content:
+        raise BadRequestException("Uploaded file is empty")
+    max_bytes = settings.max_kb_upload_size_mb * 1024 * 1024
+    if len(content) > max_bytes:
+        raise BadRequestException(
+            f"File exceeds the {settings.max_kb_upload_size_mb}MB upload limit"
+        )
+
+    text = extract_text(content, file.content_type or "")
+    article_title = title or (Path(file.filename).stem if file.filename else "Untitled")
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+
+    body = ArticleCreate(
+        tenant_id=current_user.tenant_id,
+        author_id=current_user.id,
+        title=article_title,
+        content=text,
+        category=category,
+        tags=tag_list,
+        is_published=True,
+    )
+    article = await svc.create(body)
     import asyncio
     asyncio.create_task(_embed_article(svc, article.id, body.title, body.content))
     return ArticleResponse.model_validate(article)

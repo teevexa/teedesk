@@ -1,0 +1,61 @@
+# React frontend. apps/web had no Dockerfile in the repo (searched the whole
+# tree, confirmed only services/api/Dockerfile existed) — added a minimal
+# multi-stage one at apps/web/Dockerfile (Vite build -> nginx:alpine) plus
+# apps/web/nginx.conf for SPA routing.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: teedesk
+  labels:
+    app: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: your-registry/teedesk-web:latest # TODO: replace, built from apps/web/Dockerfile
+          ports:
+            - containerPort: 80
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: teedesk
+  labels:
+    app: web
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http

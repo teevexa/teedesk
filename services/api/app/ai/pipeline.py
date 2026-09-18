@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai import embedding_service, ner_service, sentiment_service
 from app.ai import intent_service, rag_service, llm_service
 from app.core.config import settings
+from app.services.tenant_settings_service import TenantSettingsService
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +65,16 @@ class AnalysisResult:
         }
 
 
+async def _disabled() -> tuple[None, None]:
+    """Stand-in for a pipeline stage the tenant has turned off.
+
+    Mirrors the (label, score) shape sentiment_service.analyze() returns on
+    failure, so a disabled stage looks identical to a failed one downstream —
+    no new state to invent.
+    """
+    return None, None
+
+
 async def run(
     user_message: str,
     db: AsyncSession,
@@ -82,11 +94,33 @@ async def run(
         result.fallback_used = True
         return result
 
+    # Fetch the tenant's settings once per run — governs which stages run
+    # below. get_or_create means every tenant implicitly has a row, so this
+    # never raises NotFound; on any other failure we degrade to the global
+    # defaults (all stages enabled) rather than fail the whole pipeline.
+    tenant_settings = None
+    try:
+        tenant_settings = await TenantSettingsService(db).get_or_create(uuid.UUID(tenant_id))
+    except Exception as exc:
+        log.warning("pipeline.tenant_settings.load_failed", error=str(exc))
+        # A failed flush (e.g. FK violation for an unknown tenant_id, as the
+        # legacy generate_response() shim can pass) leaves the session's
+        # transaction unusable until rolled back — reset it so later stages
+        # sharing this same `db` can still run.
+        await db.rollback()
+
+    sentiment_enabled = tenant_settings is None or tenant_settings.enable_sentiment_analysis
+    intent_enabled = tenant_settings is None or tenant_settings.enable_intent_detection
+
     # ---------------------------------------------------------------
     # Phase 1: parallel — embed, sentiment, NER
     # ---------------------------------------------------------------
     embed_task = embedding_service.embed(user_message, redis=redis)
-    sentiment_task = sentiment_service.analyze(user_message, redis=redis)
+    sentiment_task = (
+        sentiment_service.analyze(user_message, redis=redis)
+        if sentiment_enabled
+        else _disabled()
+    )
     ner_task = ner_service.extract(user_message)
 
     _p1 = await asyncio.gather(embed_task, sentiment_task, ner_task, return_exceptions=True)
@@ -111,13 +145,20 @@ async def run(
     if embedding:
         # Intent and RAG both use the same db session — run sequentially to
         # avoid SQLAlchemy's "concurrent operations not permitted" error.
-        try:
-            _intent = await intent_service.classify(
-                user_message, db=db, tenant_id=tenant_id, query_embedding=embedding
-            )
-            intent_name, intent_confidence = _intent if isinstance(_intent, tuple) else (None, 0.0)
-        except Exception:
-            intent_name, intent_confidence = None, 0.0
+        if intent_enabled:
+            try:
+                _intent = await intent_service.classify(
+                    user_message,
+                    db=db,
+                    tenant_id=tenant_id,
+                    query_embedding=embedding,
+                    min_confidence=(
+                        tenant_settings.confidence_threshold if tenant_settings else None
+                    ),
+                )
+                intent_name, intent_confidence = _intent if isinstance(_intent, tuple) else (None, 0.0)
+            except Exception:
+                intent_name, intent_confidence = None, 0.0
 
         try:
             kb_articles = await rag_service.retrieve(embedding, db=db, tenant_id=tenant_id)
@@ -145,8 +186,15 @@ async def run(
     # ---------------------------------------------------------------
     # Auto-escalation signal
     # ---------------------------------------------------------------
+    # Per-tenant enable_auto_escalation gates this entirely; when it's on we
+    # still use the existing global escalation_sentiment_threshold — the
+    # tenant's confidence_threshold is a different concept (intent
+    # confidence, wired into intent_service.classify above), not escalation.
+    auto_escalation_enabled = (
+        tenant_settings.enable_auto_escalation if tenant_settings else settings.enable_auto_escalation
+    )
     if (
-        settings.enable_auto_escalation
+        auto_escalation_enabled
         and result.sentiment_score is not None
         and result.sentiment_score < settings.escalation_sentiment_threshold
     ):

@@ -41,6 +41,7 @@ export const AnalyticsPanel: React.FC = () => {
     queryFn: () => analyticsService.getOverview(period),
     enabled: isBackendConnected,
     staleTime: 60_000,
+    refetchInterval: isBackendConnected ? 60_000 : false,
   });
 
   if (!isBackendConnected) {

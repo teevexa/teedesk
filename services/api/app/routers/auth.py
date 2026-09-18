@@ -1,5 +1,15 @@
-"""Authentication endpoints — register, login, logout, refresh, password reset."""
-from __future__ import annotations
+"""Authentication endpoints — register, login, logout, refresh, password reset.
+
+Deliberately does NOT use `from __future__ import annotations`: several
+endpoints below are wrapped by @limiter.limit(), and that decorator's
+closure lives in slowapi's own module — its __globals__ can't see this
+file's imports (e.g. RegisterRequest), so with postponed evaluation on,
+FastAPI can't resolve the string-based annotations on those wrapped
+endpoints and silently misreads a Pydantic body param as a Query param
+(breaking OpenAPI schema generation). Evaluating annotations eagerly here
+sidesteps that — the annotations are real class objects, not strings, so
+there's nothing to resolve against the wrapper's globals.
+"""
 
 from typing import Optional
 
@@ -12,21 +22,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.net import get_client_ip
+from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT, RESET_LIMIT, limiter
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
     EmailVerifyRequest,
     LoginRequest,
-    MessageResponse,
     PasswordResetConfirm,
     PasswordResetRequest,
     RefreshRequest,
     RegisterRequest,
-    TokenResponse,
     UpdateProfileRequest,
     UserResponse,
 )
-from app.services import auth_service
+from app.services import auth_service, email_service
 
 log = structlog.get_logger(__name__)
 
@@ -51,10 +61,7 @@ def _clear_refresh_cookie(response: Response) -> None:
 
 
 def _client_ip(request: Request) -> Optional[str]:
-    xff = request.headers.get("X-Forwarded-For")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else None
+    return get_client_ip(request)
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +69,7 @@ def _client_ip(request: Request) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
+@limiter.limit(REGISTER_LIMIT)
 async def register(
     request: Request,
     data: RegisterRequest,
@@ -79,6 +87,7 @@ async def register(
 # ---------------------------------------------------------------------------
 
 @router.post("/login")
+@limiter.limit(AUTH_LIMIT)
 async def login(
     request: Request,
     data: LoginRequest,
@@ -200,7 +209,9 @@ async def change_password(
 # ---------------------------------------------------------------------------
 
 @router.post("/forgot-password")
+@limiter.limit(RESET_LIMIT)
 async def forgot_password(
+    request: Request,
     data: PasswordResetRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -209,7 +220,9 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
+@limiter.limit(RESET_LIMIT)
 async def reset_password(
+    request: Request,
     data: PasswordResetConfirm,
     response: Response,
     db: AsyncSession = Depends(get_db),
@@ -233,7 +246,9 @@ async def verify_email(
 
 
 @router.post("/resend-verification")
+@limiter.limit(RESET_LIMIT)
 async def resend_verification(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -249,5 +264,7 @@ async def resend_verification(
             email_verification_expires=token_expiry(hours=48),
         )
     )
-    log.debug("email.resend_verification_token", token=token)
+    if current_user.email:
+        display_name = current_user.name or current_user.email.split("@")[0]
+        await email_service.send_verification_email(current_user.email, display_name, token)
     return {"message": "Verification email sent."}

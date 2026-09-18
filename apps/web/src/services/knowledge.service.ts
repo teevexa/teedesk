@@ -6,20 +6,23 @@ export interface SearchParams {
   category?: string;
   tags?: string[];
   page?: number;
-  per_page?: number;
+  size?: number;
 }
 
 export interface CreateArticlePayload {
   title: string;
   content: string;
-  category: string;
+  category?: string;
   tags?: string[];
+  is_published?: boolean;
 }
 
 export const knowledgeService = {
   search: async (params: SearchParams): Promise<PaginatedResponse<KnowledgeArticle>> => {
+    // Backend expects `search`, not `query`, for full-text search.
+    const { query, ...rest } = params;
     const { data } = await apiClient.get<PaginatedResponse<KnowledgeArticle>>('/knowledge', {
-      params,
+      params: { ...rest, search: query },
     });
     return data;
   },
@@ -43,12 +46,31 @@ export const knowledgeService = {
     await apiClient.delete(`/knowledge/${id}`);
   },
 
-  markHelpful: async (id: string): Promise<void> => {
-    await apiClient.post(`/knowledge/${id}/helpful`);
+  markHelpful: async (id: string, helpful: boolean): Promise<void> => {
+    await apiClient.post(`/knowledge/${id}/helpful`, null, { params: { helpful } });
+  },
+
+  recordView: async (id: string): Promise<void> => {
+    await apiClient.post(`/knowledge/${id}/view`);
   },
 
   getCategories: async (): Promise<string[]> => {
     const { data } = await apiClient.get<string[]>('/knowledge/categories');
+    return data;
+  },
+
+  uploadDocument: async (
+    file: File,
+    meta: { title?: string; category?: string; tags?: string[] }
+  ): Promise<KnowledgeArticle> => {
+    const form = new FormData();
+    form.append('file', file);
+    if (meta.title) form.append('title', meta.title);
+    if (meta.category) form.append('category', meta.category);
+    if (meta.tags?.length) form.append('tags', meta.tags.join(','));
+    const { data } = await apiClient.post<KnowledgeArticle>('/knowledge/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return data;
   },
 };

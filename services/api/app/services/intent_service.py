@@ -66,7 +66,7 @@ class IntentService:
             await self.db.flush()
         except IntegrityError:
             await self.db.rollback()
-            raise ConflictException(f"Intent name already exists for this tenant")
+            raise ConflictException("Intent name already exists for this tenant")
         await self.db.refresh(intent)
         return intent
 

@@ -43,13 +43,18 @@ class MessageService:
 
     async def list(
         self,
-        tenant_id: uuid.UUID | None = None,
+        tenant_id: uuid.UUID,
         is_bot: bool | None = None,
         intent: str | None = None,
         page: int = 1,
         size: int = 20,
     ) -> tuple[Sequence[Message], int]:
-        stmt = select(Message)
+        # Messages have no tenant_id of their own — scope via their conversation.
+        stmt = (
+            select(Message)
+            .join(Conversation, Message.conversation_id == Conversation.id)
+            .where(Conversation.tenant_id == tenant_id)
+        )
         if is_bot is not None:
             stmt = stmt.where(Message.is_bot == is_bot)
         if intent:
@@ -63,12 +68,8 @@ class MessageService:
         rows = (await self.db.execute(stmt)).scalars().all()
         return rows, total
 
-    async def create(self, data: MessageCreate) -> Message:
-        # Verify conversation exists
-        conv = await self.db.get(Conversation, data.conversation_id)
-        if conv is None or conv.is_deleted:
-            raise NotFoundException("Conversation", data.conversation_id)
-
+    async def create(self, data: MessageCreate, conversation: Conversation) -> Message:
+        # `conversation` is passed in already fetched + tenant/owner-verified by the caller.
         msg = Message(
             conversation_id=data.conversation_id,
             sender_id=data.sender_id,

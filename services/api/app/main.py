@@ -9,11 +9,28 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.core.config import settings
+from app.core.config import APP_VERSION, settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.rate_limit import limiter
-from app.routers import admin, analytics, auth, conversations, escalations, feedback, health, intents, knowledge, messages, widget, whatsapp
+from app.routers import (
+    admin,
+    analytics,
+    attachments,
+    auth,
+    conversations,
+    escalations,
+    feedback,
+    health,
+    intents,
+    knowledge,
+    messages,
+    telegram,
+    tenant_settings,
+    tenant_switch,
+    widget,
+    whatsapp,
+)
 from app.routers import websocket as ws_router
 
 configure_logging()
@@ -23,6 +40,30 @@ log = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     log.info("TeeDesk API starting", environment=settings.environment)
+
+    if settings.is_production and settings.secret_key_is_default:
+        raise RuntimeError(
+            "Refusing to start in production with the default SECRET_KEY. "
+            "Set a unique, random SECRET_KEY in your environment."
+        )
+    if (
+        settings.is_production
+        and settings.whatsapp_access_token
+        and not settings.whatsapp_app_secret
+    ):
+        raise RuntimeError(
+            "Refusing to start in production with WhatsApp configured but "
+            "WHATSAPP_APP_SECRET unset — inbound webhooks would be unauthenticated."
+        )
+    if (
+        settings.is_production
+        and settings.telegram_bot_token
+        and not settings.telegram_webhook_secret
+    ):
+        raise RuntimeError(
+            "Refusing to start in production with Telegram configured but "
+            "TELEGRAM_WEBHOOK_SECRET unset — inbound webhooks would be unauthenticated."
+        )
 
     # Start Redis pub/sub listener for cross-process WS broadcast
     from app.core.connection_manager import manager
@@ -57,7 +98,7 @@ app = FastAPI(
         "Production-grade AI customer support infrastructure. "
         "Open-source, self-hostable, zero paid AI APIs."
     ),
-    version="0.4.0",
+    version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
@@ -139,11 +180,15 @@ app.include_router(analytics.router, prefix=API_PREFIX)
 app.include_router(conversations.router, prefix=API_PREFIX)
 app.include_router(escalations.router, prefix=API_PREFIX)
 app.include_router(messages.router, prefix=API_PREFIX)
+app.include_router(attachments.router, prefix=API_PREFIX)
 app.include_router(knowledge.router, prefix=API_PREFIX)
 app.include_router(feedback.router, prefix=API_PREFIX)
 app.include_router(intents.router, prefix=API_PREFIX)
 app.include_router(widget.router, prefix=API_PREFIX)
 app.include_router(whatsapp.router, prefix=API_PREFIX)
+app.include_router(telegram.router, prefix=API_PREFIX)
+app.include_router(tenant_settings.router, prefix=API_PREFIX)
+app.include_router(tenant_switch.router, prefix=API_PREFIX)
 
 # WebSocket — registered at /api/v1/ws (path declared inside the router)
 app.include_router(ws_router.router)

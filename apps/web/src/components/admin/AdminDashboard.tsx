@@ -8,6 +8,7 @@ import { ConversationHistory } from '@/components/admin/ConversationHistory';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { TrainingDataPanel } from '@/components/admin/TrainingDataPanel';
+import { UserManagementPanel } from '@/components/admin/UserManagementPanel';
 import {
   Settings,
   MessageSquare,
@@ -26,6 +27,7 @@ import { useUIStore } from '@/store';
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [userPanelOpen, setUserPanelOpen] = useState(false);
   const { isBackendConnected } = useUIStore();
 
   const { data: health, refetch: recheckHealth, isFetching } = useQuery({
@@ -53,15 +55,15 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 glass-card">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="conversations">Conversations</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="training" className="gap-1">
+        <TabsList className="glass-card flex w-full overflow-x-auto sm:grid sm:grid-cols-5">
+          <TabsTrigger value="overview" className="flex-shrink-0">Overview</TabsTrigger>
+          <TabsTrigger value="conversations" className="flex-shrink-0">Conversations</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-shrink-0">Analytics</TabsTrigger>
+          <TabsTrigger value="training" className="flex-shrink-0 gap-1">
             <Brain className="h-3.5 w-3.5" />
             Training
           </TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-shrink-0">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -114,8 +116,20 @@ export const AdminDashboard: React.FC = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-warning">Dev Mode</div>
-                <p className="text-xs text-muted-foreground">Auth not yet configured</p>
+                <div
+                  className={`text-2xl font-bold ${
+                    health?.secret_key_configured ? 'text-success' : 'text-warning'
+                  }`}
+                >
+                  {health?.secret_key_configured === undefined
+                    ? '—'
+                    : health.secret_key_configured
+                      ? 'Secured'
+                      : 'Default Key'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {health?.environment ? `${health.environment} environment` : 'JWT auth'}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -139,15 +153,27 @@ export const AdminDashboard: React.FC = () => {
                   <RefreshCw className={`h-5 w-5 ${isFetching ? 'animate-spin' : ''}`} />
                   Recheck Health
                 </Button>
-                <Button variant="outline" className="flex flex-col gap-2 h-20" disabled>
+                <Button
+                  variant="outline"
+                  className="flex flex-col gap-2 h-20"
+                  onClick={() => setActiveTab('conversations')}
+                >
                   <Download className="h-5 w-5" />
                   Export Data
                 </Button>
-                <Button variant="outline" className="flex flex-col gap-2 h-20" disabled>
+                <Button
+                  variant="outline"
+                  className="flex flex-col gap-2 h-20"
+                  onClick={() => setActiveTab('analytics')}
+                >
                   <BarChart3 className="h-5 w-5" />
                   Reports
                 </Button>
-                <Button variant="outline" className="flex flex-col gap-2 h-20" disabled>
+                <Button
+                  variant="outline"
+                  className="flex flex-col gap-2 h-20"
+                  onClick={() => setUserPanelOpen(true)}
+                >
                   <Shield className="h-5 w-5" />
                   User Management
                 </Button>
@@ -186,7 +212,9 @@ export const AdminDashboard: React.FC = () => {
                   { label: 'Embeddable chat widget (IIFE bundle)', done: true },
                   { label: 'WhatsApp Business API integration', done: true },
                   { label: 'Fine-tuning pipeline (Celery + feedback loop)', done: true },
-                  { label: 'Telegram bot integration', done: false },
+                  { label: 'Telegram bot integration', done: true },
+                  { label: 'File attachments (upload/download)', done: true },
+                  { label: 'Knowledge base PDF/DOCX ingestion', done: true },
                   { label: 'Billing (Stripe / Flutterwave)', done: false },
                 ].map(({ label, done }) => (
                   <div key={label} className="flex items-center gap-2">
@@ -217,6 +245,8 @@ export const AdminDashboard: React.FC = () => {
           <SettingsPanel />
         </TabsContent>
       </Tabs>
+
+      <UserManagementPanel open={userPanelOpen} onOpenChange={setUserPanelOpen} />
     </div>
   );
 };

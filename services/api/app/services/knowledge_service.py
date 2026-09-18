@@ -58,6 +58,20 @@ class KnowledgeService:
         rows = (await self.db.execute(stmt)).scalars().all()
         return rows, total
 
+    async def list_categories(self, tenant_id: uuid.UUID) -> list[str]:
+        stmt = (
+            select(KnowledgeArticle.category)
+            .where(
+                KnowledgeArticle.tenant_id == tenant_id,
+                KnowledgeArticle.deleted_at.is_(None),
+                KnowledgeArticle.category.is_not(None),
+            )
+            .distinct()
+            .order_by(KnowledgeArticle.category.asc())
+        )
+        rows = (await self.db.execute(stmt)).scalars().all()
+        return list(rows)
+
     async def create(self, data: ArticleCreate) -> KnowledgeArticle:
         article = KnowledgeArticle(
             tenant_id=data.tenant_id,

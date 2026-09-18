@@ -6,11 +6,12 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_agent
+from app.core.auth import get_current_user, require_agent, verify_conversation_access
 from app.core.database import get_db
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.models.user import User
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
+from app.services.conversation_service import ConversationService
 from app.services.feedback_service import FeedbackService
 
 log = structlog.get_logger(__name__)
@@ -22,7 +23,12 @@ def _svc(db: AsyncSession = Depends(get_db)) -> FeedbackService:
     return FeedbackService(db)
 
 
+def _conv_svc(db: AsyncSession = Depends(get_db)) -> ConversationService:
+    return ConversationService(db)
+
+
 Svc = Annotated[FeedbackService, Depends(_svc)]
+ConvSvc = Annotated[ConversationService, Depends(_conv_svc)]
 Pagination = Annotated[PaginationParams, Depends()]
 AuthUser = Annotated[User, Depends(get_current_user)]
 
@@ -37,6 +43,7 @@ async def list_feedback(
     rating: str | None = Query(None, pattern="^(positive|negative)$"),
 ) -> PaginatedResponse[FeedbackResponse]:
     items, total = await svc.list(
+        tenant_id=current_user.tenant_id,
         conversation_id=conversation_id,
         message_id=message_id,
         rating=rating,
@@ -57,12 +64,15 @@ async def list_feedback(
 @router.post("", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)
 async def create_feedback(
     svc: Svc,
+    conv_svc: ConvSvc,
     body: FeedbackCreate,
     current_user: AuthUser,
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> FeedbackResponse:
-    if not body.user_id:
+    conv = await conv_svc.get(body.conversation_id)
+    verify_conversation_access(conv, current_user)
+    if current_user.role == "customer" or not body.user_id:
         body.user_id = current_user.id
     fb = await svc.create(body)
 
@@ -80,9 +90,11 @@ async def create_feedback(
 
 @router.get("/{feedback_id}", response_model=FeedbackResponse)
 async def get_feedback(
-    svc: Svc, feedback_id: uuid.UUID, current_user: AuthUser
+    svc: Svc, conv_svc: ConvSvc, feedback_id: uuid.UUID, current_user: AuthUser
 ) -> FeedbackResponse:
     fb = await svc.get(feedback_id)
+    conv = await conv_svc.get(fb.conversation_id)
+    verify_conversation_access(conv, current_user)
     return FeedbackResponse.model_validate(fb)
 
 

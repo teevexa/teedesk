@@ -1,0 +1,47 @@
+# Celery worker. Same image as api, different command. Celery app instance is
+# app.tasks.celery_app:celery_app (services/api/app/tasks/celery_app.py), broker
+# and result backend both point at Redis DB 1/2 by default (see core/config.py),
+# overridden here to the in-cluster REDIS_URL like the api service.
+#
+# docker-compose.prod.yml does not define a worker service today; this is new,
+# matching the Celery app wiring that already exists in the codebase.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: teedesk
+  labels:
+    app: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: your-registry/teedesk-api:latest # TODO: replace (same image as api)
+          command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: teedesk-config
+            - secretRef:
+                name: teedesk-secrets
+          volumeMounts:
+            - name: models-cache
+              mountPath: /models_cache
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+      volumes:
+        - name: models-cache
+          persistentVolumeClaim:
+            claimName: models-cache # defined in api.yaml

@@ -1,7 +1,17 @@
 {
   "name": "teedesk",
+  "description": "Self-hosted AI customer support platform — zero paid AI APIs.",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teevexa/teedesk.git"
+  },
+  "homepage": "https://github.com/teevexa/teedesk",
+  "bugs": {
+    "url": "https://github.com/teevexa/teedesk/issues"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"

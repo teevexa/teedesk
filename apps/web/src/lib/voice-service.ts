@@ -81,20 +81,30 @@ export class VoiceService {
       }
 
       this.isListening = true;
+      let settled = false;
 
       this.recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         this.isListening = false;
+        settled = true;
         resolve(transcript);
       };
 
       this.recognition.onerror = (event) => {
         this.isListening = false;
+        settled = true;
         reject(new Error(`Speech recognition error: ${event.error}`));
       };
 
+      // Some browsers end recognition (e.g. on silence) without firing
+      // onresult or onerror — without this, the promise would never settle
+      // and the caller's UI (mic button) would stay stuck "listening" forever.
       this.recognition.onend = () => {
         this.isListening = false;
+        if (!settled) {
+          settled = true;
+          reject(new Error('No speech detected'));
+        }
       };
 
       this.recognition.start();

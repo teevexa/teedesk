@@ -5,6 +5,7 @@ import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { KnowledgeBase } from '@/components/knowledge/KnowledgeBase';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { AgentDashboard } from '@/components/agent/AgentDashboard';
+import { SectionErrorBoundary } from '@/components/shared/SectionErrorBoundary';
 import { useAuthStore } from '@/store/auth.store';
 import { useChatStore } from '@/store/chat.store';
 import { ADMIN_ROLES } from '@/types';
@@ -27,10 +28,26 @@ const Index: React.FC = () => {
 
   return (
     <AppLayout
-      chatPanel={<ChatInterface />}
-      analyticsPanel={<AnalyticsPanel />}
-      knowledgePanel={<KnowledgeBase />}
-      adminPanel={isAdmin ? <AdminDashboard /> : <AgentDashboard />}
+      chatPanel={
+        <SectionErrorBoundary title="Chat unavailable">
+          <ChatInterface />
+        </SectionErrorBoundary>
+      }
+      analyticsPanel={
+        <SectionErrorBoundary title="Analytics unavailable">
+          <AnalyticsPanel />
+        </SectionErrorBoundary>
+      }
+      knowledgePanel={
+        <SectionErrorBoundary title="Knowledge base unavailable">
+          <KnowledgeBase />
+        </SectionErrorBoundary>
+      }
+      adminPanel={
+        <SectionErrorBoundary title="Dashboard unavailable">
+          {isAdmin ? <AdminDashboard /> : <AgentDashboard />}
+        </SectionErrorBoundary>
+      }
     />
   );
 };

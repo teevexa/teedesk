@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_agent
+from app.core.auth import get_current_user, require_agent, verify_tenant_access
 from app.core.database import get_db
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.models.user import User
@@ -64,6 +64,7 @@ async def get_intent(
     svc: Svc, intent_id: uuid.UUID, current_user: AuthUser
 ) -> IntentResponse:
     intent = await svc.get(intent_id)
+    verify_tenant_access(intent.tenant_id, current_user)
     return IntentResponse.model_validate(intent)
 
 
@@ -71,6 +72,8 @@ async def get_intent(
 async def update_intent(
     svc: Svc, intent_id: uuid.UUID, body: IntentUpdate, current_user: AgentUser
 ) -> IntentResponse:
+    intent = await svc.get(intent_id)
+    verify_tenant_access(intent.tenant_id, current_user)
     intent = await svc.update(intent_id, body)
     return IntentResponse.model_validate(intent)
 
@@ -79,5 +82,7 @@ async def update_intent(
 async def delete_intent(
     svc: Svc, intent_id: uuid.UUID, current_user: AgentUser
 ) -> Response:
+    intent = await svc.get(intent_id)
+    verify_tenant_access(intent.tenant_id, current_user)
     await svc.delete(intent_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

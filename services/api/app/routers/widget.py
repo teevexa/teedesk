@@ -3,13 +3,14 @@ import uuid
 from datetime import timedelta
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.rate_limit import STRICT_LIMIT, limiter
 from app.core.security import create_access_token
 from app.models.conversation import Conversation
 from app.models.tenant import Tenant
@@ -31,7 +32,9 @@ class SessionResponse(BaseModel):
 
 
 @router.post("/session", response_model=SessionResponse)
+@limiter.limit(STRICT_LIMIT)
 async def create_guest_session(
+    request: Request,
     body: SessionRequest,
     db: AsyncSession = Depends(get_db),
 ) -> SessionResponse:
@@ -40,10 +43,15 @@ async def create_guest_session(
     Called by the embeddable widget on first open.  No authentication required —
     the tenant_id in the script tag acts as the public identifier.
     """
+    try:
+        tenant_uuid = uuid.UUID(body.tenant_id)
+    except ValueError:
+        raise BadRequestException("Invalid tenant_id")
+
     # Validate tenant exists and is active
     tenant_result = await db.execute(
         select(Tenant).where(
-            Tenant.id == uuid.UUID(body.tenant_id),
+            Tenant.id == tenant_uuid,
             Tenant.is_active.is_(True),
         )
     )

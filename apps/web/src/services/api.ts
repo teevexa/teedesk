@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { ApiError } from '@/types';
+import { SESSION_EXPIRED_EVENT } from '@/components/auth/SessionExpiredListener';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -83,7 +84,11 @@ apiClient.interceptors.response.use(
         import('@/store/auth.store').then(({ useAuthStore }) => {
           useAuthStore.getState().clearAuth();
         });
-        window.location.href = '/login';
+        // Client-side navigation (via SessionExpiredListener) instead of a
+        // hard window.location.href reload — this can fire from any failed
+        // background request, not just a user-initiated one, so forcing a
+        // full page reload would needlessly discard in-memory SPA state.
+        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
         return Promise.reject(refreshErr);
       } finally {
         _isRefreshing = false;

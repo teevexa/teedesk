@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_agent, require_admin, verify_tenant_access
+from app.core.auth import require_agent, require_admin, verify_tenant_access
 from app.core.database import get_db
 from app.core.exceptions import NotFoundException
 from app.core.pagination import PaginatedResponse, PaginationParams

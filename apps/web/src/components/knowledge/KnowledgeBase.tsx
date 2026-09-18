@@ -9,12 +9,16 @@ import { Search, BookOpen, Plus, ExternalLink, RefreshCw, AlertTriangle } from '
 import { knowledgeService } from '@/services/knowledge.service';
 import { KnowledgeCardSkeleton } from '@/components/shared/SkeletonLoaders';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ArticleDialog } from './ArticleDialog';
 import { useUIStore } from '@/store';
 import { useDebounce } from '@/hooks/use-debounce';
+import { KnowledgeArticle } from '@/types';
 
 export const KnowledgeBase: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<KnowledgeArticle | null>(null);
   const { isBackendConnected } = useUIStore();
   const debouncedQuery = useDebounce(searchQuery, 300);
 
@@ -24,7 +28,7 @@ export const KnowledgeBase: React.FC = () => {
       knowledgeService.search({
         query: debouncedQuery || undefined,
         category: selectedCategory || undefined,
-        per_page: 50,
+        size: 50,
       }),
     enabled: isBackendConnected,
     staleTime: 30_000,
@@ -37,6 +41,17 @@ export const KnowledgeBase: React.FC = () => {
     staleTime: 300_000,
   });
 
+  const openCreateDialog = () => {
+    setEditingArticle(null);
+    setDialogOpen(true);
+  };
+
+  const openArticle = (article: KnowledgeArticle) => {
+    setEditingArticle(article);
+    setDialogOpen(true);
+    knowledgeService.recordView(article.id).catch(() => {});
+  };
+
   if (!isBackendConnected) {
     return (
       <EmptyState
@@ -47,7 +62,7 @@ export const KnowledgeBase: React.FC = () => {
     );
   }
 
-  const articles = data?.data ?? [];
+  const articles = data?.items ?? [];
   const categories = categoriesData ?? [];
   const total = data?.total ?? 0;
 
@@ -86,7 +101,7 @@ export const KnowledgeBase: React.FC = () => {
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button className="bg-gradient-primary">
+            <Button className="bg-gradient-primary" onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               New Article
             </Button>
@@ -144,7 +159,7 @@ export const KnowledgeBase: React.FC = () => {
               ? `No articles match "${searchQuery}". Try a different search term.`
               : 'Your knowledge base is empty. Add your first article to get started.'
           }
-          action={{ label: 'Create Article', onClick: () => {} }}
+          action={{ label: 'Create Article', onClick: openCreateDialog }}
         />
       )}
 
@@ -159,12 +174,23 @@ export const KnowledgeBase: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
               >
-                <Card className="glass-card p-4 h-full flex flex-col hover:shadow-glow transition-all duration-300">
+                <Card
+                  className="glass-card p-4 h-full flex flex-col hover:shadow-glow transition-all duration-300 cursor-pointer"
+                  onClick={() => openArticle(article)}
+                >
                   <div className="flex items-start justify-between mb-3">
                     <Badge variant="secondary" className="text-xs">
                       {article.category}
                     </Badge>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openArticle(article);
+                      }}
+                    >
                       <ExternalLink className="h-3 w-3" />
                     </Button>
                   </div>
@@ -198,6 +224,8 @@ export const KnowledgeBase: React.FC = () => {
           </AnimatePresence>
         </div>
       )}
+
+      <ArticleDialog open={dialogOpen} onOpenChange={setDialogOpen} article={editingArticle} />
     </div>
   );
 };

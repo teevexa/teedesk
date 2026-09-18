@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Generic, Sequence, TypeVar
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 

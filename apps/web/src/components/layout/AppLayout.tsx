@@ -15,7 +15,8 @@ import { useUIStore } from '@/store';
 import { useAuthStore } from '@/store/auth.store';
 import { AppTab } from '@/store/ui.store';
 import { ApiStatusBanner } from '@/components/shared/ApiStatusBanner';
-import { AGENT_ROLES, ADMIN_ROLES, UserRole } from '@/types';
+import { TenantSwitcher } from '@/components/layout/TenantSwitcher';
+import { AGENT_ROLES, UserRole } from '@/types';
 
 interface AppLayoutProps {
   chatPanel: React.ReactNode;
@@ -103,6 +104,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                 </TabsTrigger>
               ))}
             </TabsList>
+
+            {/* Tenant switcher — only renders for admin/super_admin users
+                with access to more than one tenant */}
+            {user && <TenantSwitcher />}
 
             {/* User menu */}
             {user && (

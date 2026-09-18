@@ -109,11 +109,18 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
             const tempId = frame.temp_id as string | undefined;
             setMessages((prev) => {
               if (tempId) {
+                // Echo of our own optimistically-sent message — reconcile it.
                 return prev.map((m) =>
                   m.id === tempId ? { ...m, id: msg.id, status: 'sent' } : m
                 );
               }
-              return prev;
+              // A message from someone else in the conversation (e.g. a human
+              // agent replying from the dashboard) — append it if not already present.
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              return [
+                ...prev,
+                { id: msg.id, content: msg.content, isBot: msg.is_bot, status: 'sent', createdAt: msg.created_at },
+              ];
             });
             break;
           }
@@ -253,6 +260,7 @@ export const Widget: React.FC<Props> = ({ tenantId, apiUrl, primaryColor, positi
           <div className="td-input-row">
             <textarea
               className="td-input"
+              aria-label="Message"
               placeholder="Type a message…"
               rows={1}
               value={input}

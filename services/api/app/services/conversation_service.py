@@ -3,14 +3,13 @@ import uuid
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.conversation import Conversation
 from app.models.escalation import Escalation
 from app.schemas.conversation import ConversationCreate, ConversationUpdate, EscalateRequest
-from app.schemas.escalation import EscalationCreate
 
 
 class ConversationService:

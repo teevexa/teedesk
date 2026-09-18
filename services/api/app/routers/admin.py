@@ -6,16 +6,19 @@ import structlog
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_admin, require_super_admin, verify_tenant_access
+from app.core.auth import require_admin, require_super_admin, verify_tenant_access
 from app.core.database import get_db
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import ConflictException, NotFoundException
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.models.auth import AuditLog
 from app.models.tenant import Tenant
+from app.models.tenant_membership import TenantMembership
 from app.models.user import User
 from app.schemas.auth import AuditLogResponse, UserResponse
+from app.schemas.tenant import GrantMembershipRequest, TenantMembershipResponse
 from app.services.auth_service import log_audit
 
 log = structlog.get_logger(__name__)
@@ -101,7 +104,10 @@ from typing import Literal
 
 
 class AdminUserUpdate(BaseModel):
-    role: Optional[Literal["customer", "agent", "support_agent", "admin"]] = None
+    # "super_admin" is intentionally a valid literal here — the handler below
+    # rejects it unless the caller is themselves a super_admin, but Pydantic
+    # would reject the value before that check ever ran if it weren't listed.
+    role: Optional[Literal["customer", "agent", "support_agent", "admin", "super_admin"]] = None
     is_active: Optional[bool] = None
     name: Optional[str] = None
 
@@ -206,6 +212,99 @@ async def list_tenants(
 
 
 # ---------------------------------------------------------------------------
+# Tenant membership grants (multi-tenant switching — admin-only)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/tenants/{tenant_id}/members",
+    response_model=TenantMembershipResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def grant_tenant_membership(
+    tenant_id: uuid.UUID,
+    data: GrantMembershipRequest,
+    current_user: User = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db),
+) -> TenantMembershipResponse:
+    """Grant a user access to switch into `tenant_id`, in addition to their home tenant.
+
+    admin can only grant membership within its own tenant; super_admin can
+    grant membership in any tenant (matches the rest of this router's
+    admin-vs-super_admin split, e.g. list_users/get_user above).
+    """
+    if current_user.role != "super_admin":
+        verify_tenant_access(tenant_id, current_user)
+    if data.role == "super_admin" and current_user.role != "super_admin":
+        from app.core.auth import ForbiddenError
+        raise ForbiddenError("Only super_admin can grant super_admin membership")
+
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    if tenant_result.scalar_one_or_none() is None:
+        raise NotFoundException("Tenant", tenant_id)
+
+    user_result = await db.execute(select(User).where(User.id == data.user_id, User.deleted_at.is_(None)))
+    target_user = user_result.scalar_one_or_none()
+    if target_user is None:
+        raise NotFoundException("User", data.user_id)
+
+    if target_user.tenant_id == tenant_id:
+        raise ConflictException("User already belongs to this tenant as their home tenant")
+
+    membership = TenantMembership(user_id=data.user_id, tenant_id=tenant_id, role=data.role)
+    db.add(membership)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictException("User already has a membership in this tenant")
+    await db.refresh(membership)
+
+    await log_audit(
+        db, "admin.tenant.member_grant", user=current_user,
+        resource_type="tenant_membership", resource_id=str(membership.id),
+        details={"tenant_id": str(tenant_id), "user_id": str(data.user_id), "role": data.role},
+    )
+
+    return TenantMembershipResponse(
+        id=membership.id, user_id=membership.user_id,
+        tenant_id=membership.tenant_id, role=membership.role,
+    )
+
+
+@router.delete(
+    "/tenants/{tenant_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+async def revoke_tenant_membership(
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: User = Depends(require_admin()),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    if current_user.role != "super_admin":
+        verify_tenant_access(tenant_id, current_user)
+
+    result = await db.execute(
+        select(TenantMembership).where(
+            TenantMembership.tenant_id == tenant_id,
+            TenantMembership.user_id == user_id,
+        )
+    )
+    membership = result.scalar_one_or_none()
+    if membership is None:
+        raise NotFoundException("Tenant membership")
+
+    await db.delete(membership)
+    await log_audit(
+        db, "admin.tenant.member_revoke", user=current_user,
+        resource_type="tenant_membership", resource_id=str(membership.id),
+        details={"tenant_id": str(tenant_id), "user_id": str(user_id)},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
 # Audit logs
 # ---------------------------------------------------------------------------
 
@@ -264,7 +363,6 @@ async def get_admin_analytics(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     from app.models.conversation import Conversation
-    from app.models.message import Message
 
     tenant_filter = (
         [] if current_user.role == "super_admin"
@@ -324,7 +422,6 @@ async def trigger_retrain(
     if all_tenants:
         if current_user.role != "super_admin":
             from app.core.exceptions import TeeDeskError
-            from fastapi import status as http_status
             raise TeeDeskError("Only super_admin can retrain all tenants")
         task = retrain_all_tenants.delay()
     else:

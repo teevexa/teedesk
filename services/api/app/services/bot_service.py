@@ -7,7 +7,6 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.pipeline import AnalysisResult, run as run_pipeline
-from app.core.config import settings
 
 
 async def process_message(

@@ -6,7 +6,7 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle, Clock, AlertTriangle, CheckCircle2,
-  User, RefreshCw, Filter, Inbox,
+  User, RefreshCw, Filter, Inbox, ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -161,8 +161,15 @@ export const AgentDashboard: React.FC = () => {
 
   return (
     <div className="flex h-full gap-0 min-h-0">
-      {/* ---- Left panel: conversation queue ---- */}
-      <div className="w-80 flex-shrink-0 flex flex-col border-r border-border/30 min-h-0">
+      {/* ---- Left panel: conversation queue ----
+          On mobile, only one panel is visible at a time (queue or the open
+          conversation) — a fixed 320px queue alongside a chat panel left no
+          usable width for the conversation on a phone-sized viewport. */}
+      <div
+        className={`w-full md:w-80 flex-shrink-0 flex-col border-r border-border/30 min-h-0 ${
+          activeConversation ? 'hidden md:flex' : 'flex'
+        }`}
+      >
         {/* Header */}
         <div className="p-4 border-b border-border/30 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
@@ -249,12 +256,25 @@ export const AgentDashboard: React.FC = () => {
       </div>
 
       {/* ---- Right panel: active conversation ---- */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+      <div
+        className={`flex-1 flex-col min-h-0 min-w-0 ${
+          activeConversation ? 'flex' : 'hidden md:flex'
+        }`}
+      >
         {activeConversation ? (
           <>
             {/* Conversation toolbar */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 flex-shrink-0">
               <div className="flex items-center gap-3 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 flex-shrink-0 md:hidden"
+                  onClick={closeConversation}
+                  aria-label="Back to queue"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">
                     {activeConversation.title || `Conversation #${activeConversation.id.slice(0, 8)}`}

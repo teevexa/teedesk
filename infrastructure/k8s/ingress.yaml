@@ -1,0 +1,51 @@
+# Routes /api* (incl. the /api/v1/ws websocket endpoint) to the api Service,
+# everything else to the web Service. Assumes ingress-nginx is installed.
+#
+# TODO: replace host below with your real domain (matches ALLOWED_ORIGINS in
+# configmap.yaml — keep them in sync).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: teedesk
+  namespace: teedesk
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    # WebSocket connections (/api/v1/ws) are long-lived; ingress-nginx proxies
+    # the HTTP/1.1 Upgrade automatically, but the default 60s proxy timeouts
+    # will kill idle chat connections, so raise them here.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Uncomment once cert-manager + a ClusterIssuer are installed, and add the
+    # matching `tls:` block below, to get automatic HTTPS certs:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: YOUR_DOMAIN_HERE
+      http:
+        paths:
+          - path: /api/v1/ws
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+  # tls:
+  #   - hosts:
+  #       - YOUR_DOMAIN_HERE
+  #     secretName: teedesk-tls

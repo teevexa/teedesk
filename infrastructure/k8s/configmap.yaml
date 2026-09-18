@@ -1,0 +1,42 @@
+# Non-secret configuration, mirrored from infrastructure/docker/.env.prod.example
+# and the `environment:` blocks in infrastructure/docker/docker-compose.prod.yml.
+# Values that are actual secrets (passwords, keys, composed DSNs) live in
+# secret.yaml.example instead — never put them here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teedesk-config
+  namespace: teedesk
+data:
+  # ─── PostgreSQL (non-secret parts) ─────────────────────────
+  POSTGRES_DB: "teedesk"
+  POSTGRES_USER: "teedesk"
+
+  # ─── FastAPI ────────────────────────────────────────────────
+  ALGORITHM: "HS256"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  # TODO: replace with your real public domain before applying.
+  ALLOWED_ORIGINS: "https://YOUR_DOMAIN_HERE"
+  LOG_LEVEL: "info"
+  ENVIRONMENT: "production"
+
+  # ─── Ollama ─────────────────────────────────────────────────
+  OLLAMA_BASE_URL: "http://ollama:11434"
+  OLLAMA_MODEL: "mistral:7b-instruct"
+
+  # ─── AI pipeline ────────────────────────────────────────────
+  AI_PIPELINE_ENABLED: "true"
+  ENABLE_AUTO_ESCALATION: "true"
+  ESCALATION_SENTIMENT_THRESHOLD: "-0.6"
+  RAG_TOP_K: "3"
+  RAG_MIN_SIMILARITY: "0.7"
+
+  # ─── Database pool ──────────────────────────────────────────
+  DATABASE_POOL_SIZE: "10"
+  DATABASE_MAX_OVERFLOW: "0"
+
+  # ─── Model cache paths (matches docker-compose.prod.yml) ────
+  HF_HOME: "/models_cache/huggingface"
+  SENTENCE_TRANSFORMERS_HOME: "/models_cache/sentence_transformers"
+  TRANSFORMERS_CACHE: "/models_cache/huggingface"

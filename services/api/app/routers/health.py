@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import APP_VERSION, settings
 from app.core.database import get_db
 
 router = APIRouter(tags=["System"])
@@ -43,8 +43,9 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
     status_str = "ok" if db_ok else "degraded"
     return {
         "status": status_str,
-        "version": "0.3.0",
+        "version": APP_VERSION,
         "environment": settings.environment,
+        "secret_key_configured": not settings.secret_key_is_default,
         "services": {
             "database": db_ok,
             "redis": redis_ok,
@@ -58,7 +59,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
 async def root() -> dict:
     return {
         "service": "TeeDesk API",
-        "version": "0.2.0",
+        "version": APP_VERSION,
         "docs": "/docs",
         "health": "/health",
     }

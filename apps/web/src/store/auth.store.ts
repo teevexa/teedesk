@@ -91,10 +91,17 @@ export const useAuthStore = create<AuthState>()(
       }),
       {
         name: 'teedesk-auth',
-        partialize: (state) => ({ user: state.user, token: state.token }),
+        // The token itself is NOT persisted here — `setAuth`/`clearAuth`
+        // already write it to its own `teedesk_token` localStorage key
+        // (read synchronously by the axios request interceptor, which
+        // can't await a dynamic store import). Persisting it a second time
+        // here would just be two copies of the same secret that can drift.
+        partialize: (state) => ({ user: state.user }),
         onRehydrateStorage: () => (state) => {
-          if (state?.token) {
-            state.isAuthenticated = true;
+          if (state) {
+            const token = localStorage.getItem('teedesk_token');
+            state.token = token;
+            state.isAuthenticated = !!token;
           }
         },
       }

@@ -10,7 +10,7 @@ import structlog
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -37,7 +37,6 @@ async def retrieve(
     threshold = min_similarity if min_similarity is not None else settings.rag_min_similarity
 
     try:
-        from app.models.knowledge import KnowledgeArticle
 
         # pgvector cosine distance operator: <=>  (0 = identical, 2 = opposite)
         # similarity = 1 - cosine_distance

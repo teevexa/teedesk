@@ -10,7 +10,6 @@ etc. unless the client needs them.
 from __future__ import annotations
 
 import structlog
-from typing import Optional
 
 from app.ai.model_manager import model_manager
 

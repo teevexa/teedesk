@@ -5,11 +5,12 @@ import uuid
 from typing import Optional
 
 import structlog
-from fastapi import Cookie, Depends, Header, Request, status
+from fastapi import Cookie, Depends, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.database import get_db
 from app.core.exceptions import TeeDeskError
@@ -82,6 +83,32 @@ async def get_current_user(
         raise AuthError("Account is disabled")
     if user.is_locked:
         raise AuthError("Account is temporarily locked")
+
+    # Tenant switching: the JWT's tenant_id/role claims encode the *active*
+    # session tenant (as minted by POST /switch-tenant), which may differ
+    # from the user's home tenant (users.tenant_id in the DB — unchanged,
+    # still used as the default whenever a token is minted for the home
+    # tenant). We override those two attributes on the loaded instance so
+    # every existing `current_user.tenant_id` / `current_user.role` call
+    # site across the routers transparently scopes to the active tenant
+    # without needing to change any of them.
+    #
+    # set_committed_value (rather than plain assignment) records the value
+    # as if it came from the DB, so it is NOT marked dirty — an incidental
+    # `db.flush()`/`db.commit()` elsewhere in the request can't accidentally
+    # persist the active tenant/role back over the user's real home tenant.
+    token_tenant_id = payload.get("tenant_id")
+    if token_tenant_id:
+        try:
+            active_tenant_id = uuid.UUID(str(token_tenant_id))
+        except (ValueError, TypeError):
+            active_tenant_id = None
+        if active_tenant_id is not None and active_tenant_id != user.tenant_id:
+            set_committed_value(user, "tenant_id", active_tenant_id)
+
+    token_role = payload.get("role")
+    if token_role and token_role != user.role:
+        set_committed_value(user, "role", token_role)
 
     # Expose user on request state for middleware/audit access
     request.state.user = user
@@ -170,3 +197,15 @@ def verify_tenant_access(resource_tenant_id: uuid.UUID, user: User) -> None:
         return  # super_admin can access any tenant
     if resource_tenant_id != user.tenant_id:
         raise ForbiddenError("Access denied: resource belongs to a different tenant")
+
+
+def verify_conversation_access(conversation, user: User) -> None:
+    """Raise 403 if user can't access this conversation.
+
+    Tenant-scopes first (like verify_tenant_access), then additionally
+    restricts customers to their own conversation — agents/admins may
+    access any conversation within their tenant.
+    """
+    verify_tenant_access(conversation.tenant_id, user)
+    if user.role == "customer" and conversation.user_id != user.id:
+        raise ForbiddenError("Access denied: not your conversation")

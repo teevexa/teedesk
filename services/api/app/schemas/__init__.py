@@ -6,12 +6,14 @@ from app.schemas.intent import IntentCreate, IntentResponse, IntentUpdate
 from app.schemas.knowledge import ArticleCreate, ArticleResponse, ArticleUpdate
 from app.schemas.message import MessageCreate, MessageResponse, MessageUpdate
 from app.schemas.tenant import TenantCreate, TenantResponse, TenantUpdate
+from app.schemas.tenant_settings import TenantSettingsResponse, TenantSettingsUpdate
 from app.schemas.training_data import TrainingDataCreate, TrainingDataResponse, TrainingDataUpdate
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 __all__ = [
     "PaginatedResponse",
     "TenantCreate", "TenantUpdate", "TenantResponse",
+    "TenantSettingsUpdate", "TenantSettingsResponse",
     "UserCreate", "UserUpdate", "UserResponse",
     "IntentCreate", "IntentUpdate", "IntentResponse",
     "ArticleCreate", "ArticleUpdate", "ArticleResponse",

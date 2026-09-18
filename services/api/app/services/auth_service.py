@@ -7,10 +7,11 @@ from typing import Optional
 
 import structlog
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from app.core.exceptions import BadRequestException, ConflictException
 from app.core.security import (
     generate_refresh_token,
     generate_urlsafe_token,
@@ -30,6 +31,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.services import email_service
 
 log = structlog.get_logger(__name__)
 
@@ -80,29 +82,38 @@ async def register(data: RegisterRequest, db: AsyncSession) -> tuple[User, str]:
     if email_result.scalar_one_or_none():
         raise ConflictException("An account with this email already exists")
 
-    # Create tenant
-    tenant = Tenant(
-        name=data.tenant_name,
-        slug=data.tenant_slug,
-        plan="free",
-    )
-    db.add(tenant)
-    await db.flush()
+    # Create tenant + admin user. The pre-checks above are a fast-path UX
+    # convenience only — the real guarantee is the DB-level unique constraint
+    # on tenants.slug and the partial unique index on users.email (migration
+    # 004), so a concurrent duplicate registration still fails safely here
+    # instead of racing past both checks.
+    try:
+        tenant = Tenant(
+            name=data.tenant_name,
+            slug=data.tenant_slug,
+            plan="free",
+        )
+        db.add(tenant)
+        await db.flush()
 
-    # Create admin user
-    verification_token = generate_urlsafe_token()
-    user = User(
-        tenant_id=tenant.id,
-        email=data.email,
-        name=data.name or data.email.split("@")[0],
-        role="admin",
-        password_hash=hash_password(data.password),
-        email_verified=False,
-        email_verification_token=verification_token,
-        email_verification_expires=token_expiry(hours=48),
-    )
-    db.add(user)
-    await db.flush()
+        verification_token = generate_urlsafe_token()
+        user = User(
+            tenant_id=tenant.id,
+            email=data.email,
+            name=data.name or data.email.split("@")[0],
+            role="admin",
+            password_hash=hash_password(data.password),
+            email_verified=False,
+            email_verification_token=verification_token,
+            email_verification_expires=token_expiry(hours=48),
+        )
+        db.add(user)
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise ConflictException(
+            "Tenant slug or email already taken — please try again"
+        )
 
     raw_refresh = generate_refresh_token()
     rt = RefreshToken(
@@ -115,8 +126,10 @@ async def register(data: RegisterRequest, db: AsyncSession) -> tuple[User, str]:
     await db.refresh(user)
 
     log.info("user.registered", user_id=str(user.id), tenant_id=str(tenant.id))
-    # In production: send verification email with `verification_token`
-    log.debug("email.verification_token", token=verification_token)
+    if user.email:
+        await email_service.send_verification_email(
+            user.email, user.name or user.email.split("@")[0], verification_token
+        )
 
     return user, raw_refresh
 
@@ -132,8 +145,15 @@ async def login(
     user_agent: Optional[str] = None,
 ) -> tuple[User, str]:
     """Authenticate user. Returns (user, raw_refresh_token)."""
-    result = await db.execute(select(User).where(User.email == data.email, User.deleted_at.is_(None)))
-    user = result.scalar_one_or_none()
+    # .first() rather than scalar_one_or_none(): email is now uniquely
+    # indexed (migration 004), but this stays defensive against any
+    # pre-existing duplicate rather than crashing login with a 500.
+    result = await db.execute(
+        select(User)
+        .where(User.email == data.email, User.deleted_at.is_(None))
+        .limit(1)
+    )
+    user = result.scalars().first()
 
     async def _audit(success: bool, detail: str) -> None:
         await _log_audit(
@@ -284,9 +304,10 @@ async def request_password_reset(email: str, db: AsyncSession) -> None:
             password_reset_expires=token_expiry(hours=1),
         )
     )
-    # In production: send reset email with token
     log.info("password_reset.token_generated", user_id=str(user.id))
-    log.debug("password_reset.token", token=token)
+    if user.email:
+        display_name = user.name or user.email.split("@")[0]
+        await email_service.send_password_reset_email(user.email, display_name, token)
 
 
 async def confirm_password_reset(token: str, new_password: str, db: AsyncSession) -> None:

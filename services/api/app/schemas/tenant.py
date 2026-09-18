@@ -35,3 +35,31 @@ class TenantResponse(TimestampSchema):
     plan: str
     is_active: bool
     settings: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# Multi-tenant switching (memberships)
+# ---------------------------------------------------------------------------
+
+class MyTenantResponse(BaseSchema):
+    """A tenant the caller can switch into — their home tenant or a granted membership."""
+    id: UUID
+    name: str
+    slug: str
+    role: str
+
+
+class SwitchTenantRequest(BaseSchema):
+    tenant_id: UUID
+
+
+class GrantMembershipRequest(BaseSchema):
+    user_id: UUID
+    role: Literal["customer", "agent", "support_agent", "admin", "super_admin"]
+
+
+class TenantMembershipResponse(BaseSchema):
+    id: UUID
+    user_id: UUID
+    tenant_id: UUID
+    role: str

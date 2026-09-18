@@ -65,6 +65,52 @@ services:
       - models_cache:/models_cache
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
 
+  # Celery worker — runs the nightly retrain task (and any other background
+  # jobs dispatched via `.delay()`, e.g. POST /api/v1/admin/retrain).
+  worker:
+    build:
+      context: ../../services/api
+      dockerfile: Dockerfile
+    container_name: teedesk-worker
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-teedesk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teedesk}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - models_cache:/models_cache
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+
+  # Celery beat — schedules the nightly retrain task defined in
+  # app/tasks/celery_app.py. Exactly one replica: a second beat instance
+  # would double-fire every scheduled task.
+  beat:
+    build:
+      context: ../../services/api
+      dockerfile: Dockerfile
+    container_name: teedesk-beat
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-teedesk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teedesk}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+
 volumes:
   postgres_data:
   redis_data:

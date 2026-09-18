@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictException, NotFoundException
+from app.models.conversation import Conversation
 from app.models.feedback import Feedback
 from app.schemas.feedback import FeedbackCreate
 
@@ -23,13 +24,19 @@ class FeedbackService:
 
     async def list(
         self,
+        tenant_id: uuid.UUID,
         conversation_id: uuid.UUID | None = None,
         message_id: uuid.UUID | None = None,
         rating: str | None = None,
         page: int = 1,
         size: int = 20,
     ) -> tuple[Sequence[Feedback], int]:
-        stmt = select(Feedback)
+        # Feedback has no tenant_id of its own — scope via its conversation.
+        stmt = (
+            select(Feedback)
+            .join(Conversation, Feedback.conversation_id == Conversation.id)
+            .where(Conversation.tenant_id == tenant_id)
+        )
         if conversation_id:
             stmt = stmt.where(Feedback.conversation_id == conversation_id)
         if message_id:

@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_agent, verify_tenant_access
+from app.core.auth import (
+    get_current_user,
+    require_agent,
+    verify_conversation_access,
+    verify_tenant_access,
+)
 from app.core.database import get_db
 from app.core.pagination import PaginatedResponse, PaginationParams
 from app.models.user import User
@@ -87,7 +92,7 @@ async def get_conversation(
     svc: Svc, conversation_id: uuid.UUID, current_user: AuthUser
 ) -> ConversationResponse:
     conv = await svc.get(conversation_id)
-    verify_tenant_access(conv.tenant_id, current_user)
+    verify_conversation_access(conv, current_user)
     return ConversationResponse.model_validate(conv)
 
 
@@ -118,7 +123,7 @@ async def escalate_conversation(
     svc: Svc, conversation_id: uuid.UUID, body: EscalateRequest, current_user: AuthUser
 ) -> ConversationResponse:
     conv = await svc.get(conversation_id)
-    verify_tenant_access(conv.tenant_id, current_user)
+    verify_conversation_access(conv, current_user)
     conv = await svc.escalate(conversation_id, body)
     return ConversationResponse.model_validate(conv)
 

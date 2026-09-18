@@ -1,0 +1,43 @@
+# Celery beat scheduler. Same image as api, different command again. Drives
+# the beat_schedule defined in app/tasks/celery_app.py (currently just the
+# nightly "retrain_all_tenants" task).
+#
+# IMPORTANT: replicas MUST stay at 1. Celery beat has no built-in leader
+# election — a second replica would independently fire every scheduled task
+# on its own timer, double-running (or n-tupling) things like the nightly
+# retrain job. Do not add an HPA or bump replicas here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  namespace: teedesk
+  labels:
+    app: beat
+spec:
+  replicas: 1 # see warning above — never scale this beyond 1
+  strategy:
+    type: Recreate # avoid two beat pods briefly overlapping during a rolling update
+  selector:
+    matchLabels:
+      app: beat
+  template:
+    metadata:
+      labels:
+        app: beat
+    spec:
+      containers:
+        - name: beat
+          image: your-registry/teedesk-api:latest # TODO: replace (same image as api)
+          command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+          envFrom:
+            - configMapRef:
+                name: teedesk-config
+            - secretRef:
+                name: teedesk-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

@@ -46,4 +46,6 @@ venv/
 # AI models (large binary files — never commit)
 *.gguf
 *.safetensors
-models/
+
+# User-uploaded attachments (local disk storage — never commit)
+services/api/data/

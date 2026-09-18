@@ -32,6 +32,7 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.tenant import Tenant
 from app.services import bot_service
+from app.services.tenant_settings_service import TenantSettingsService
 
 log = structlog.get_logger(__name__)
 
@@ -66,7 +67,9 @@ async def receive_message(
 ) -> JSONResponse:
     body = await request.body()
 
-    # Verify Meta's HMAC-SHA256 signature
+    # Verify Meta's HMAC-SHA256 signature. In production this is mandatory —
+    # main.py's startup check already refuses to boot with WhatsApp configured
+    # and no app secret set, but we fail closed here too as defense in depth.
     if settings.whatsapp_app_secret:
         expected = "sha256=" + hmac.new(
             settings.whatsapp_app_secret.encode(),
@@ -76,6 +79,11 @@ async def receive_message(
         if not hmac.compare_digest(expected, x_hub_signature_256):
             log.warning("whatsapp.signature.invalid")
             return JSONResponse({"error": "invalid signature"}, status_code=403)
+    elif settings.is_production:
+        log.error("whatsapp.webhook.rejected — WHATSAPP_APP_SECRET not configured")
+        return JSONResponse({"error": "webhook not configured"}, status_code=503)
+    else:
+        log.warning("whatsapp.signature.skipped — WHATSAPP_APP_SECRET not set (dev only)")
 
     try:
         payload = json.loads(body)
@@ -119,6 +127,11 @@ async def _handle_inbound(
         tenant = await _get_default_tenant(db)
         if tenant is None:
             log.warning("whatsapp.no_tenant_found")
+            return
+
+        tenant_settings = await TenantSettingsService(db).get_or_create(tenant.id)
+        if not tenant_settings.whatsapp_enabled:
+            log.info("whatsapp.disabled_for_tenant", tenant_id=str(tenant.id))
             return
 
         conv = await _get_or_create_conversation(from_number, tenant.id, db)

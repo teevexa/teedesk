@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, require_agent
+from app.core.auth import require_agent
 from app.core.database import get_db
 from app.models.conversation import Conversation
 from app.models.escalation import Escalation

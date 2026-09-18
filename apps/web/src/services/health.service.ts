@@ -5,6 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down' | 'unreachable';
   version?: string;
+  environment?: string;
+  secret_key_configured?: boolean;
   services?: {
     database: boolean;
     redis: boolean;

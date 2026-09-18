@@ -44,6 +44,15 @@ export interface TokenResponse {
   user: User;
 }
 
+// A tenant the current user can switch into — their home tenant, or one
+// they've been granted an additional membership in. See GET /my-tenants.
+export interface MyTenant {
+  id: string;
+  name: string;
+  slug: string;
+  role: UserRole;
+}
+
 export interface Conversation {
   id: string;
   user_id: string;
@@ -134,15 +143,48 @@ export interface Feedback {
 export interface KnowledgeArticle {
   id: string;
   tenant_id?: string;
+  author_id?: string | null;
   title: string;
   content: string;
-  category: string;
+  category: string | null;
   tags: string[];
   views: number;
   helpful_count: number;
+  not_helpful_count: number;
+  is_published: boolean;
+  source_url?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface TenantSettings {
+  tenant_id: string;
+  chat_title: string;
+  welcome_message: string;
+  business_hours: string | null;
+  timezone: string;
+  language: string;
+  enable_sentiment_analysis: boolean;
+  enable_intent_detection: boolean;
+  enable_voice_support: boolean;
+  enable_auto_escalation: boolean;
+  response_delay_ms: number;
+  confidence_threshold: number;
+  email_notifications: boolean;
+  sms_alerts: boolean;
+  desktop_notifications: boolean;
+  urgent_issue_alert: boolean;
+  whatsapp_enabled: boolean;
+  telegram_enabled: boolean;
+  slack_integration: boolean;
+  webhook_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TenantSettingsUpdate = Partial<
+  Omit<TenantSettings, 'tenant_id' | 'created_at' | 'updated_at'>
+>;
 
 export interface SentimentDistribution {
   positive: number;
@@ -168,10 +210,14 @@ export interface ApiError {
   code?: string;
 }
 
+// Must match services/api/app/core/pagination.py's PaginatedResponse field
+// names exactly — the API has no field aliases, so the wire shape is this.
 export interface PaginatedResponse<T> {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
-  per_page: number;
-  has_more: boolean;
+  size: number;
+  pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }

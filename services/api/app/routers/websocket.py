@@ -29,12 +29,10 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.connection_manager import manager
 from app.core.database import AsyncSessionLocal
@@ -44,7 +42,6 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.user import AGENT_ROLES
 from app.services import bot_service
-from app.services.conversation_service import ConversationService
 from app.services.message_service import MessageService
 
 log = structlog.get_logger(__name__)
@@ -369,6 +366,10 @@ async def _handle_typing(
     conv_id = data.get("conversation_id", "")
     if not conv_id:
         return
+    # Only members who actually joined this conversation (via _handle_join,
+    # which enforces tenant + ownership) may broadcast typing into it.
+    if user_id not in manager.get_conv_members(conv_id):
+        return
     await manager.broadcast_to_conversation(
         conv_id,
         {
@@ -394,6 +395,10 @@ async def _handle_read(ws: WebSocket, data: dict, user_id: str, tenant_id: str) 
     async with AsyncSessionLocal() as db:
         msg = await db.get(Message, msg_uuid)
         if not msg:
+            return
+
+        conv = await db.get(Conversation, msg.conversation_id)
+        if not conv or str(conv.tenant_id) != tenant_id:
             return
 
         await db.execute(

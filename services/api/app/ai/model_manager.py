@@ -18,6 +18,10 @@ log = structlog.get_logger(__name__)
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ai_worker")
 
 
+_MAX_LOAD_RETRIES = 3
+_RETRY_BACKOFF_SECONDS = 10
+
+
 class ModelManager:
     def __init__(self) -> None:
         self._embedding_model: Any = None
@@ -50,46 +54,62 @@ class ModelManager:
         if self._loop and not self._loop.is_closed():
             self._loop.call_soon_threadsafe(event.set)
 
+    def _clear_ready(self, event: asyncio.Event) -> None:
+        """Thread-safe: clear an asyncio.Event from a worker thread, so
+        awaiters block again until a retry succeeds instead of getting a
+        permanent None handle back immediately."""
+        if self._loop and not self._loop.is_closed():
+            self._loop.call_soon_threadsafe(event.clear)
+
+    def _load_with_retry(self, name: str, event: asyncio.Event, load_fn) -> None:
+        import time
+
+        for attempt in range(1, _MAX_LOAD_RETRIES + 1):
+            try:
+                log.info(f"loading {name} model", attempt=attempt)
+                load_fn()
+                log.info(f"{name} model ready")
+                self._signal_ready(event)
+                return
+            except Exception as exc:
+                log.error(f"{name} model load failed", attempt=attempt, error=str(exc))
+                if attempt < _MAX_LOAD_RETRIES:
+                    time.sleep(_RETRY_BACKOFF_SECONDS)
+
+        # All retries exhausted — signal ready anyway so callers stop blocking
+        # forever, but the handle stays None and pipeline code degrades to
+        # its fallback path. health() below reports this as unhealthy.
+        log.error(f"{name} model permanently unavailable after {_MAX_LOAD_RETRIES} attempts")
+        self._signal_ready(event)
+
     def _load_embedding(self) -> None:
-        try:
+        def _do() -> None:
             from sentence_transformers import SentenceTransformer
             from app.core.config import settings
-            log.info("loading embedding model", model=settings.embedding_model)
             self._embedding_model = SentenceTransformer(settings.embedding_model)
-            log.info("embedding model ready")
-        except Exception as exc:
-            log.error("embedding model load failed", error=str(exc))
-        finally:
-            self._signal_ready(self._embedding_ready)
+
+        self._load_with_retry("embedding", self._embedding_ready, _do)
 
     def _load_sentiment(self) -> None:
-        try:
+        def _do() -> None:
             from transformers import pipeline as hf_pipeline
             from app.core.config import settings
-            log.info("loading sentiment model", model=settings.sentiment_model)
             self._sentiment_pipeline = hf_pipeline(
                 "sentiment-analysis",
                 model=settings.sentiment_model,
                 device=-1,   # CPU
                 top_k=None,  # return all labels + scores
             )
-            log.info("sentiment model ready")
-        except Exception as exc:
-            log.error("sentiment model load failed", error=str(exc))
-        finally:
-            self._signal_ready(self._sentiment_ready)
+
+        self._load_with_retry("sentiment", self._sentiment_ready, _do)
 
     def _load_spacy(self) -> None:
-        try:
+        def _do() -> None:
             import spacy
             from app.core.config import settings
-            log.info("loading spacy model", model=settings.spacy_model)
             self._spacy_model = spacy.load(settings.spacy_model)
-            log.info("spacy model ready")
-        except Exception as exc:
-            log.error("spacy model load failed", error=str(exc))
-        finally:
-            self._signal_ready(self._spacy_ready)
+
+        self._load_with_retry("spacy", self._spacy_ready, _do)
 
     # ------------------------------------------------------------------
     # Accessors (await the gate then call in executor)

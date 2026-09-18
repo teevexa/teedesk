@@ -161,8 +161,13 @@ export const ChatInterface: React.FC = () => {
   };
 
   const handleFeedback = async (messageId: string, rating: 'positive' | 'negative') => {
+    if (!activeConversation) return;
     try {
-      await apiClient.post('/feedback', { message_id: messageId, rating });
+      await apiClient.post('/feedback', {
+        conversation_id: activeConversation.id,
+        message_id: messageId,
+        rating,
+      });
       toast({ title: 'Feedback received', description: 'Thank you!' });
     } catch {
       toast({ title: 'Error', description: 'Could not submit feedback.', variant: 'destructive' });
@@ -279,6 +284,7 @@ export const ChatInterface: React.FC = () => {
         <div className="flex gap-2 items-end">
           <Textarea
             ref={textareaRef}
+            aria-label="Message"
             value={inputValue}
             onChange={(e) => handleInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -291,6 +297,7 @@ export const ChatInterface: React.FC = () => {
           <Button
             variant="outline"
             size="icon"
+            aria-label={isVoiceListening ? 'Stop voice input' : 'Start voice input'}
             onClick={handleVoiceInput}
             disabled={isVoiceListening || isSending}
             className={`glass-card flex-shrink-0 ${isVoiceListening ? 'glow-primary' : ''}`}
@@ -298,6 +305,7 @@ export const ChatInterface: React.FC = () => {
             {isVoiceListening ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
           </Button>
           <Button
+            aria-label="Send message"
             onClick={handleSend}
             disabled={!inputValue.trim() || isSending || isCreatingConv}
             className="bg-gradient-primary hover:shadow-glow transition-all duration-300 flex-shrink-0"

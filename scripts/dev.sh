@@ -3,7 +3,7 @@
 # Usage: bash scripts/dev.sh [command]
 #
 # Commands:
-#   infra    Start Docker infrastructure (Postgres, Redis, Ollama, Qdrant)
+#   infra    Start Docker infrastructure (Postgres, Redis, Ollama)
 #   web      Start web frontend dev server
 #   api      Start FastAPI backend dev server
 #   pull     Pull recommended Ollama models
@@ -17,12 +17,11 @@ case "$COMMAND" in
   infra)
     echo "[dev] Starting infrastructure..."
     cd infrastructure/docker
-    docker compose up -d postgres redis ollama qdrant
+    docker compose up -d postgres redis ollama
     echo "[dev] Infrastructure started:"
     echo "  PostgreSQL: localhost:5432"
     echo "  Redis:      localhost:6379"
     echo "  Ollama:     localhost:11434"
-    echo "  Qdrant:     localhost:6333"
     ;;
 
   web)
@@ -41,8 +40,9 @@ case "$COMMAND" in
 
   pull)
     echo "[dev] Pulling Ollama models..."
+    # Embeddings/sentiment/NER run in-process via sentence-transformers/spaCy
+    # (see services/api/app/ai/model_manager.py) — Ollama only serves the LLM.
     docker exec teedesk-ollama ollama pull mistral:7b-instruct
-    docker exec teedesk-ollama ollama pull nomic-embed-text
     echo "[dev] Models ready"
     ;;
 

@@ -7,9 +7,9 @@ export interface CreateConversationPayload {
 }
 
 export const conversationService = {
-  list: async (page = 1, perPage = 20): Promise<PaginatedResponse<Conversation>> => {
+  list: async (page = 1, size = 20): Promise<PaginatedResponse<Conversation>> => {
     const { data } = await apiClient.get<PaginatedResponse<Conversation>>('/conversations', {
-      params: { page, per_page: perPage },
+      params: { page, size },
     });
     return data;
   },

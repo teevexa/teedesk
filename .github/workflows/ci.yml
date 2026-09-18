@@ -60,25 +60,40 @@ jobs:
           path: apps/web/dist
           retention-days: 7
 
-  # Uncomment when Python backend is implemented
-  # test-api:
-  #   name: Test API
-  #   runs-on: ubuntu-latest
-  #   services:
-  #     postgres:
-  #       image: pgvector/pgvector:pg16
-  #       env:
-  #         POSTGRES_DB: teedesk_test
-  #         POSTGRES_USER: teedesk
-  #         POSTGRES_PASSWORD: test
-  #       ports:
-  #         - 5432:5432
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-python@v5
-  #       with:
-  #         python-version: '3.12'
-  #     - name: Install deps
-  #       run: pip install -r services/api/requirements.txt
-  #     - name: Run tests
-  #       run: pytest services/api/tests/ -v
+  lint-api:
+    name: Lint API (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check
+        # F = pyflakes (unused imports, undefined names, etc), E9 = syntax errors.
+        # Scoped to error-level checks rather than full style linting, since
+        # this codebase has no prior ruff/black/flake8 config to build on.
+        run: ruff check services/api/app --select F,E9
+
+  test-api:
+    name: Test API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: services/api/requirements.txt
+
+      - name: Install deps
+        run: pip install -r services/api/requirements.txt
+
+      - name: Run tests
+        # tests/conftest.py mocks the DB session — no live Postgres/Redis needed.
+        run: pytest services/api/tests/ -v

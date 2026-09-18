@@ -146,7 +146,7 @@ export const useChatStore = create<ChatState>()(
           const params: Record<string, string> = {};
           if (filter !== 'all') params.status = filter;
           const res = await apiClient.get('/conversations', { params });
-          set({ conversations: res.data.items ?? res.data, isLoadingConversations: false });
+          set({ conversations: res.data.items ?? [], isLoadingConversations: false });
         } catch {
           set({ isLoadingConversations: false });
         }

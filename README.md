@@ -34,7 +34,8 @@ teedesk/
 │   ├── api/              FastAPI backend (Python) — REST + WebSocket
 │   └── inference/        Ollama local LLM config and Modelfile
 ├── infrastructure/
-│   └── docker/           docker-compose for local dev (Postgres, Redis, Ollama, Qdrant)
+│   ├── docker/           docker-compose for local dev + production (Postgres, Redis, Ollama)
+│   └── k8s/              Kubernetes manifests (alternative to Docker Compose)
 ├── scripts/              Developer utility scripts
 ├── .github/workflows/    CI/CD pipeline
 ├── turbo.json            Turborepo build orchestration
@@ -59,10 +60,12 @@ teedesk/
 | LLM | Ollama (Mistral 7B / Llama 3.1) | Local response generation |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) | RAG + intent classification |
 | NER | spaCy | Named entity extraction |
-| Vector DB | pgvector (or Qdrant) | Knowledge base retrieval |
-| Background Jobs | Celery | Intent retraining from feedback |
+| Vector DB | pgvector | Knowledge base retrieval |
+| Background Jobs | Celery (worker + beat) | Nightly intent retraining from feedback |
 | Widget | Vanilla JS (IIFE, Vite build) | Embeddable customer chat widget |
 | WhatsApp | Meta Cloud API + webhooks | WhatsApp Business channel |
+| Telegram | Bot API + webhooks | Telegram channel |
+| Email | SMTP (any provider) | Verification + password reset |
 
 ---
 
@@ -77,7 +80,7 @@ teedesk/
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/b3njaminbaya/teedesk.git
+git clone https://github.com/teevexa/teedesk.git
 cd teedesk
 bash scripts/setup.sh
 ```
@@ -86,7 +89,7 @@ bash scripts/setup.sh
 
 ```bash
 bash scripts/dev.sh infra
-# Starts: PostgreSQL, Redis, Ollama, Qdrant
+# Starts: PostgreSQL, Redis, Ollama
 ```
 
 ### 3. Pull an LLM Model
@@ -185,21 +188,23 @@ OLLAMA_MODEL=mistral:7b-instruct
 - [x] Full AI pipeline — embedding → sentiment → NER → intent classification → RAG → LLM
 - [x] Ollama LLM integration (Mistral 7B, local, zero API cost)
 - [x] RAG knowledge base (pgvector cosine similarity retrieval)
-- [x] Multi-tenancy — all data scoped to `tenant_id`, role-based access (customer / agent / admin / super_admin)
+- [x] Multi-tenancy — all data scoped to `tenant_id`, role-based access (customer / agent / admin / super_admin), plus admin/super_admin tenant switching for users granted access to more than one tenant
+- [x] Per-tenant settings (chat branding, AI pipeline toggles, channel enable/disable) — persisted and wired into real pipeline/webhook behavior
 - [x] Human handoff — auto-escalation on negative sentiment, agent claim/resolve flow
 - [x] Analytics API — conversation stats, sentiment distribution, intent trends
-- [x] Email verification + password reset flows (frontend + backend)
-- [x] Docker Compose dev infrastructure (Postgres, Redis, Ollama, Qdrant)
-- [x] CI/CD pipeline (GitHub Actions)
-- [x] Shared TypeScript types package
-
-### In Progress
-- [ ] Embeddable chat widget (IIFE bundle for third-party sites)
-- [ ] WhatsApp Business API integration (Meta Cloud API webhooks)
-- [ ] Fine-tuning pipeline — feedback-driven intent retraining via Celery
+- [x] Email verification + password reset flows (frontend + backend, real SMTP delivery)
+- [x] Docker Compose dev + production infrastructure (Postgres, Redis, Ollama, Celery worker + beat)
+- [x] Kubernetes manifests (`infrastructure/k8s/`) as an alternative to Docker Compose
+- [x] CI/CD pipeline (GitHub Actions) — lint/build/test for both the web app and the API
+- [x] Embeddable chat widget (IIFE bundle for third-party sites)
+- [x] WhatsApp Business API integration (Meta Cloud API webhooks)
+- [x] Telegram bot integration (Bot API webhooks)
+- [x] File attachments (upload/download on messages)
+- [x] Knowledge base document ingestion (PDF/DOCX upload with text extraction)
+- [x] Incremental intent retraining from verified feedback (similarity-search based, not gradient descent — runs nightly via Celery beat)
 
 ### Planned
-- [ ] Telegram bot integration
+- [ ] Shared TypeScript types package (`packages/shared-types` exists but isn't consumed by the apps yet)
 - [ ] Stripe / Flutterwave billing for SaaS deployment
 
 ---
@@ -232,6 +237,25 @@ All AI components are free and run locally:
 
 ### Self-Hosted (recommended for privacy)
 
+`docker compose up -d` (with no `-f` flag) starts the **development** stack —
+it publishes Postgres, Redis, and Ollama on all interfaces with a weak
+default Postgres password and no Redis password at all. That's fine on your
+own laptop; it is not safe to run on a public IP. For anything reachable
+from the internet (a VM, a cloud host), use the production compose file
+instead, which binds the API to localhost only (put a real reverse proxy —
+e.g. the included [Caddyfile](infrastructure/docker/Caddyfile) — in front of
+it) and requires real secrets:
+
+```bash
+cd infrastructure/docker
+cp .env.prod.example .env.prod
+# Edit .env.prod: set a real SECRET_KEY, POSTGRES_PASSWORD, and REDIS_PASSWORD
+# (openssl rand -hex 32 is a good way to generate each one)
+docker compose -f docker-compose.prod.yml up -d
+```
+
+The dev-only shortcut, for local use:
+
 ```bash
 cd infrastructure/docker
 docker compose up -d
@@ -247,11 +271,12 @@ MIT — see [LICENSE](LICENSE).
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Commit your changes: `git commit -m "feat: add my feature"`
-4. Push and open a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide — dev setup, code style, and what to check before opening a PR.
+
+## Security
+
+Found a vulnerability? Please don't open a public issue — see [SECURITY.md](SECURITY.md) for how to report it privately.
 
 ---
 
-Built with care for the developer community. No vendor lock-in. No paid AI APIs.
+Built and maintained by [Teevexa](https://www.teevexa.com). No vendor lock-in. No paid AI APIs.

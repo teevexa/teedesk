@@ -71,8 +71,14 @@ async def classify(
     db: AsyncSession,
     tenant_id: str,
     query_embedding: Optional[list[float]] = None,
+    min_confidence: Optional[float] = None,
 ) -> tuple[Optional[str], float]:
-    """Return (intent_name, confidence). intent_name is None when below threshold."""
+    """Return (intent_name, confidence). intent_name is None when below threshold.
+
+    `min_confidence`, when given (the tenant's TenantSettings.confidence_threshold),
+    overrides the global `settings.intent_min_confidence` as the gate used for
+    messages that don't match any per-intent-configured threshold below.
+    """
     if not text.strip():
         return None, 0.0
 
@@ -88,7 +94,7 @@ async def classify(
 
     best_intent: Optional[str] = None
     best_score: float = 0.0
-    best_threshold: float = settings.intent_min_confidence
+    best_threshold: float = min_confidence if min_confidence is not None else settings.intent_min_confidence
 
     for name, threshold, example_vecs in intent_defs:
         scores = [_cosine(vec, ev) for ev in example_vecs]

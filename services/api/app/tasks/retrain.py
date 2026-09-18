@@ -15,7 +15,6 @@ It's fast, deterministic, and works at any scale without a training server.
 from __future__ import annotations
 
 import asyncio
-import logging
 
 import structlog
 from sqlalchemy import select, update
@@ -28,13 +27,16 @@ log = structlog.get_logger(__name__)
 @celery_app.task(name="app.tasks.retrain.retrain_tenant", bind=True, max_retries=3)
 def retrain_tenant(self, tenant_id: str) -> dict:  # type: ignore[override]
     """Promote verified TrainingData rows into Intent examples for one tenant."""
-    return asyncio.get_event_loop().run_until_complete(_retrain_tenant_async(tenant_id))
+    # asyncio.run() (not get_event_loop().run_until_complete()) — Celery worker
+    # threads have no current event loop by default under some pool types
+    # (prefork/threads on Python 3.10+), which makes get_event_loop() raise.
+    return asyncio.run(_retrain_tenant_async(tenant_id))
 
 
 @celery_app.task(name="app.tasks.retrain.retrain_all_tenants", bind=True)
 def retrain_all_tenants(self) -> dict:  # type: ignore[override]
     """Nightly task — retrain all active tenants."""
-    return asyncio.get_event_loop().run_until_complete(_retrain_all_async())
+    return asyncio.run(_retrain_all_async())
 
 
 async def _retrain_all_async() -> dict:

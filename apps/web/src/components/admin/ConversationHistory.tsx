@@ -16,6 +16,7 @@ import { conversationService } from '@/services/conversation.service';
 import { chatService } from '@/services/chat.service';
 import { ConversationCardSkeleton } from '@/components/shared/SkeletonLoaders';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ConversationExport } from '@/components/shared/ConversationExport';
 import { useUIStore } from '@/store';
 import { Conversation, ConversationStatus } from '@/types';
 
@@ -40,7 +41,7 @@ export const ConversationHistory: React.FC = () => {
     enabled: !!selectedId && isBackendConnected,
   });
 
-  const conversations = listData?.data ?? [];
+  const conversations = listData?.items ?? [];
 
   const filtered = conversations.filter((conv) => {
     const matchesSearch =
@@ -168,7 +169,25 @@ export const ConversationHistory: React.FC = () => {
                 Started {new Date(selectedConversation.created_at).toLocaleString()}
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {messagesData && messagesData.length > 0 && (
+                <ConversationExport
+                  conversation={{
+                    id: selectedConversation.id,
+                    title:
+                      selectedConversation.title || `Conversation ${selectedConversation.id.slice(0, 8)}`,
+                    created_at: selectedConversation.created_at,
+                    messages: messagesData.map((m) => ({
+                      id: m.id,
+                      content: m.content,
+                      sender: m.is_bot ? 'bot' : 'user',
+                      created_at: m.created_at,
+                      intent: m.intent ?? undefined,
+                      sentiment: m.sentiment ?? undefined,
+                    })),
+                  }}
+                />
+              )}
               <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
                 {messagesData?.map((msg) => (
                   <div
